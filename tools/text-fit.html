@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><title>Text fit check</title></head>
+<body style="margin:0;font:13px ui-monospace,monospace">
+<!--
+  Walks every page in both languages and checks the story text:
+    · what each sentence line actually reads
+    · how many visual rows it takes and how tall the block is
+    · that it stays inside the picture, top and bottom
+    · that it sits on empty artwork (luminance std dev under the box)
+    · that the phone width falls back to the caption cleanly
+
+  Run headless:
+    chrome --headless=new --allow-file-access-from-files --window-size=1500,1000 \
+           --virtual-time-budget=180000 --dump-dom tools/text-fit.html
+-->
+<iframe id="f" src="../index.html" style="width:1440px;height:900px;border:0"></iframe>
+<pre id="log">running…</pre>
+<script>
+const out = [];
+const say = (s) => { out.push(s); document.getElementById("log").textContent = out.join("\n"); };
+const wait = (ms) => new Promise(r => setTimeout(r, ms));
+const TURN = 1250;              /* comfortably past the page-turn busy guard */
+let bad = 0;
+
+/* std dev of luminance in the artwork under the text box. The art is
+   object-fit:cover on a frame of the same aspect, so the box's percentage
+   position in the frame is its percentage position in the image. */
+function busyness(img, box, frame) {
+  try {
+    const W = 320, H = Math.round(W * img.naturalHeight / img.naturalWidth);
+    const c = document.createElement("canvas"); c.width = W; c.height = H;
+    const g = c.getContext("2d", { willReadFrequently: true });
+    g.drawImage(img, 0, 0, W, H);
+    const x = Math.max(0, Math.round((box.left - frame.left) / frame.width  * W));
+    const y = Math.max(0, Math.round((box.top  - frame.top)  / frame.height * H));
+    const w = Math.min(W - x, Math.round(box.width  / frame.width  * W));
+    const h = Math.min(H - y, Math.round(box.height / frame.height * H));
+    if (w < 2 || h < 2) return -1;
+    const d = g.getImageData(x, y, w, h).data;
+    let s = 0, s2 = 0, n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      const l = .299 * d[i] + .587 * d[i + 1] + .114 * d[i + 2];
+      s += l; s2 += l * l; n++;
+    }
+    return Math.sqrt(s2 / n - (s / n) ** 2);
+  } catch (e) { return -2; }
+}
+
+(async () => {
+  const f = document.getElementById("f");
+  await new Promise(r => f.addEventListener("load", r, { once: true }));
+  const w = f.contentWindow, d = f.contentDocument;
+  await wait(1400);
+
+  for (const code of ["hi", "en"]) {
+    if (code === "en") { d.getElementById("langBtn").click(); await wait(900); }
+    say("═══ " + code + " ═══");
+
+    for (let page = 1; page <= 13; page++) {
+      if (page > 1) { d.getElementById("nextBtn").click(); await wait(TURN); }
+
+      const slot  = d.querySelector(".slot.is-active");
+      const text  = slot.querySelector(".scene__text");
+      const art   = slot.querySelector(".slot__art");
+      const frame = d.getElementById("frame").getBoundingClientRect();
+
+      if (text.hidden || !text.textContent.trim()) { say("p" + page + "  (cover — no words)"); continue; }
+
+      const lns = [...text.querySelectorAll(".ln")];
+      const box = text.getBoundingClientRect();
+      const cs  = w.getComputedStyle(text);
+      const lh  = parseFloat(cs.lineHeight);
+      const rows = lns.reduce((n, l) => n + Math.round(l.getBoundingClientRect().height / lh), 0);
+
+      const top    = box.top - frame.top;
+      const bottom = frame.bottom - box.bottom;
+      const std    = busyness(art, box, frame);
+      const fits   = top >= 0 && bottom >= 0;
+      const clear  = std < 26;
+      if (!fits || !clear) bad++;
+
+      say("p" + String(page).padStart(2) +
+          "  sentences " + lns.length + "  rows " + rows +
+          "  h " + (100 * box.height / frame.height).toFixed(1) + "%" +
+          "  top " + top.toFixed(0) + "  bottom " + bottom.toFixed(0) +
+          "  art-std " + std.toFixed(1) +
+          (fits ? (top >= 8 && bottom >= 8 ? "  OK" : "  TIGHT") : "  OVERFLOW") +
+          (clear ? "" : "  ON-ARTWORK"));
+      lns.forEach((l, i) => say("      " + (i + 1) + "| " + l.textContent.trim()));
+    }
+    for (let i = 0; i < 14; i++) { d.getElementById("prevBtn").click(); await wait(TURN); }
+  }
+
+  /* phone: the side column gives way to the caption under the picture */
+  f.style.width = "390px";
+  await wait(700);
+  d.getElementById("nextBtn").click(); await wait(TURN);
+  const sc = w.getComputedStyle(d.querySelector(".slot.is-active .scene__text"));
+  const cap = d.getElementById("storyText");
+  const capLines = cap.querySelectorAll(".ln").length;
+  const scrolls = d.documentElement.scrollWidth > d.documentElement.clientWidth;
+  const capOK = sc.display === "none" && capLines > 0 && !scrolls;
+  if (!capOK) bad++;
+  say("");
+  say("phone 390px — side text " + sc.display + ", caption lines " + capLines +
+      ", horizontal scroll " + scrolls + (capOK ? "  OK" : "  FAIL"));
+
+  say("");
+  say(bad ? "FAIL — " + bad + " problem(s)"
+          : "PASS — every page fits, sits on empty artwork, and falls back on phones");
+  document.title = "done";
+})();
+</script>
+</body>
+</html>

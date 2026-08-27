@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Audio sync · आरु की छींक</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root { --ink:#3b2a1c; --paper:#f9f0dd; --terracotta:#c4573a; --teal:#3d8a86; --gold:#e6a52b; }
+  * { box-sizing: border-box; }
+  body {
+    margin:0; min-height:100vh; padding:24px;
+    font-family:"Baloo 2","Nirmala UI",system-ui,sans-serif; color:var(--ink);
+    background:var(--paper);
+    display:flex; flex-direction:column; align-items:center; gap:18px;
+  }
+  h1 { margin:0; font-size:1.35rem; }
+  .lead { margin:0; max-width:760px; text-align:center; line-height:1.55; color:#6d5540; }
+  .card {
+    width:min(100%,860px); background:#fffdf5; border:1px solid rgba(160,122,78,.25);
+    border-radius:20px; padding:26px 30px; box-shadow:0 14px 30px -18px rgba(59,42,28,.4);
+  }
+  .badge {
+    display:inline-block; padding:4px 14px; border-radius:999px;
+    background:var(--terracotta); color:#fff; font-weight:800; font-size:.95rem;
+  }
+  .story { font-size:1.6rem; line-height:1.6; font-weight:600; margin:14px 0 0; }
+  .story em { font-style:normal; font-weight:800; color:var(--terracotta); }
+  .next { color:#8a7156; font-size:1rem; margin-top:14px; }
+  .row { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
+  button {
+    font:inherit; font-weight:800; cursor:pointer; border:0; border-radius:999px;
+    padding:14px 26px; background:#241a12; color:#fff;
+  }
+  button.primary { background:var(--terracotta); font-size:1.15rem; padding:18px 40px; }
+  button.ghost   { background:none; color:#6d5540; border:1px solid rgba(160,122,78,.4); }
+  button:disabled { opacity:.4; cursor:default; }
+  .meter { width:min(100%,860px); height:10px; border-radius:999px; background:rgba(160,122,78,.2); overflow:hidden; }
+  .meter i { display:block; height:100%; width:0; background:var(--teal); }
+  .marks { width:min(100%,860px); font:13px ui-monospace,monospace; color:#6d5540; }
+  .out {
+    width:min(100%,860px); font:13px ui-monospace,monospace; white-space:pre-wrap;
+    background:#241a12; color:#f6e7c9; padding:16px 18px; border-radius:14px; display:none;
+  }
+  .hint { font-size:.95rem; color:#8a7156; }
+  kbd { background:#241a12; color:#fff; border-radius:6px; padding:2px 8px; font:inherit; font-size:.85rem; }
+</style>
+</head>
+<body>
+
+<h1>Audio sync — mark where each page ends</h1>
+<p class="lead">
+  Press <b>Start</b>, then listen. The moment the narration for the page shown below
+  <b>finishes</b>, press <kbd>Space</kbd> (or the big button). Do that 11 times and you are done —
+  about 95 seconds. Each mark is snapped to the reader's nearest real pause, so being a little
+  early or late is fine.
+</p>
+
+<div class="card">
+  <span class="badge" id="badge">Page 2</span>
+  <p class="story" id="story">—</p>
+  <p class="next" id="next"></p>
+</div>
+
+<div class="meter"><i id="bar"></i></div>
+
+<div class="row">
+  <button class="primary" id="mark" disabled>Start</button>
+  <button class="ghost" id="undo" disabled>Undo last mark</button>
+  <button class="ghost" id="reset">Start over</button>
+</div>
+<p class="hint" id="hint">Loading the recording…</p>
+
+<div class="marks" id="marks"></div>
+<pre class="out" id="out"></pre>
+
+<script>
+/* Pauses ffmpeg found in the recording (silencedetect -38dB, 0.20s).
+   Marks snap to the middle of the nearest one so a human tap lands cleanly. */
+const GAPS = [[0.00,0.27],[1.63,2.47],[3.98,4.47],[5.68,6.20],[6.93,7.32],[8.84,9.48],[10.98,11.29],
+[13.97,14.26],[14.36,14.57],[16.21,16.97],[18.36,18.76],[19.14,20.07],[21.36,22.02],[23.92,24.78],
+[28.89,29.47],[30.12,30.50],[31.08,31.52],[31.61,31.82],[33.35,33.58],[35.49,36.11],[36.83,37.16],
+[37.65,38.51],[38.84,39.17],[40.28,40.74],[42.25,42.79],[46.64,46.91],[50.73,51.38],[52.60,52.93],
+[53.46,54.06],[55.63,56.10],[58.40,59.04],[60.35,60.76],[62.54,63.34],[65.34,65.62],[67.52,68.20],
+[69.58,70.05],[70.07,70.30],[71.24,71.74],[73.69,74.39],[76.00,76.23],[78.16,78.89],[80.14,80.94],
+[82.26,82.70],[86.65,86.94],[87.89,88.19],[91.08,91.73],[93.06,93.36]];
+
+const FIRST_SOUND = GAPS[0][1];          /* the recording opens with 0.27s of silence */
+const audio = new Audio("../Aaru ki cheenkh.mp3");
+audio.preload = "auto";
+
+let texts = [], marks = [], started = false;
+
+const $ = (id) => document.getElementById(id);
+const fmt = (t) => t.toFixed(2) + "s";
+
+/* pull the same Hindi text the book shows, so this can never drift out of sync */
+fetch("../script.js").then(r => r.text()).then(js => {
+  const re = /text:\s*\{\s*\r?\n\s*hi:\s*"((?:[^"\\]|\\.)*)"/g;
+  let m;
+  while ((m = re.exec(js))) texts.push(m[1]);
+  render();
+  $("hint").textContent = texts.length + " pages loaded. Press Start when you are ready.";
+  $("mark").disabled = false;
+}).catch(() => {
+  $("hint").textContent = "Could not read script.js — open this page from the project folder.";
+});
+
+function snap(t, after) {
+  let best = t, d = Infinity;
+  for (const g of GAPS) {
+    const mid = (g[0] + g[1]) / 2;
+    if (mid <= after + 0.05) continue;        /* never snap backwards */
+    if (Math.abs(mid - t) < d) { d = Math.abs(mid - t); best = mid; }
+  }
+  /* only snap if a pause is genuinely near, otherwise keep the raw tap */
+  return d <= 1.2 ? best : Math.max(t, after + 0.05);
+}
+
+function render() {
+  const i = marks.length;                 /* 0 -> page 2 */
+  const page = i + 2;
+  $("badge").textContent = "Page " + page + (page === 13 ? " (last)" : "");
+  $("story").innerHTML = texts[i] || "—";
+  $("next").textContent = texts[i + 1] ? "next: " + texts[i + 1].replace(/<[^>]+>/g, "").slice(0, 60) + "…" : "";
+  $("undo").disabled = marks.length === 0;
+  $("marks").textContent = marks.length
+    ? "marks: " + marks.map((t, k) => "p" + (k + 2) + "→" + fmt(t)).join("   ")
+    : "";
+  if (started) $("mark").textContent = page === 13 ? "Finish" : "Page " + page + " ended";
+}
+
+function finish() {
+  audio.pause();
+  /* Belt and braces: the list that ships is always strictly increasing.
+     Built sequentially — comparing against the previous *clamped* value, not
+     the raw one, or a late low mark could still slip out of order. */
+  const raw = [FIRST_SOUND, ...marks, audio.duration || 93.36];
+  const bounds = [];
+  for (const v of raw) {
+    bounds.push(bounds.length ? Math.max(v, bounds[bounds.length - 1] + 0.05) : v);
+  }
+  const lines = [];
+  for (let p = 0; p < 12; p++) {
+    lines.push("  @(" + bounds[p].toFixed(3) + ", " + bounds[p + 1].toFixed(3) + "),"
+      .padEnd(10) + "   # page " + String(p + 2).padStart(2)
+      + "   " + (bounds[p + 1] - bounds[p]).toFixed(2) + "s");
+  }
+  $("out").style.display = "block";
+  $("out").textContent =
+    "Paste this over the $CLIPS list in tools/cut-audio.ps1, then run it:\n\n" +
+    "$CLIPS = @(\n" + lines.join("\n") + "\n)\n\n" +
+    "…or just send these numbers back and I will apply them.";
+  $("mark").disabled = true;
+  $("hint").textContent = "Done — 11 marks captured.";
+  $("out").scrollIntoView({ behavior: "smooth" });
+}
+
+$("mark").addEventListener("click", () => {
+  if (!started) {
+    started = true;
+    audio.currentTime = 0;
+    audio.play();
+    $("hint").innerHTML = 'Press <kbd>Space</kbd> the moment each page&rsquo;s narration ends.';
+    render();
+    return;
+  }
+  const prev = marks.length ? marks[marks.length - 1] : FIRST_SOUND;
+  /* ignore an accidental double-tap: a page is never under half a second */
+  if (audio.currentTime < prev + 0.5) { $("hint").textContent = "too soon — that tap was ignored"; return; }
+  marks.push(snap(audio.currentTime, prev));
+  if (marks.length >= 11) { render(); finish(); return; }
+  render();
+});
+
+$("undo").addEventListener("click", () => { marks.pop(); render(); });
+$("reset").addEventListener("click", () => {
+  marks = []; started = false; audio.pause(); audio.currentTime = 0;
+  $("out").style.display = "none"; $("mark").disabled = false;
+  $("mark").textContent = "Start"; $("hint").textContent = "Press Start when you are ready.";
+  render();
+});
+
+addEventListener("keydown", (e) => {
+  if (e.code === "Space") { e.preventDefault(); $("mark").click(); }
+});
+
+audio.addEventListener("timeupdate", () => {
+  const d = audio.duration || 93.36;
+  $("bar").style.width = (100 * audio.currentTime / d) + "%";
+});
+audio.addEventListener("ended", () => { if (started && marks.length < 11) finish(); });
+</script>
+</body>
+</html>

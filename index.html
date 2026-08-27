@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<!-- class="at-cover" so the home page paints correctly before the script runs -->
+<html lang="hi" class="at-cover">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#f8efdd" />
+<meta name="description" content="आरु की छींक — एक इंटरैक्टिव चित्र-कथा। An interactive animated picture book for children." />
+<title>आरु की छींक · Aaru's Sneeze</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<!-- Baloo 2 carries the Devanagari, Baloo Bhai 2 the Latin the Hindi text is
+     set in — see --font in style.css for why both are needed -->
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Baloo+Bhai+2:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml" />
+<!-- bump ?v= after editing so a plain refresh never serves a cached copy -->
+<link rel="stylesheet" href="style.css?v=43" />
+<!-- the picture the book opens on, so it is on screen as early as possible -->
+<link rel="preload" as="image" href="assets/images/page-01.jpg" />
+</head>
+
+<body>
+  <!-- ── Inline icon sprite (works offline / from file://) ───────────────── -->
+  <svg class="sprite" aria-hidden="true" focusable="false" width="0" height="0">
+    <defs>
+      <symbol id="i-arrow-left" viewBox="0 0 24 24">
+        <path d="M15.5 4.5 8 12l7.5 7.5" fill="none" stroke="currentColor" stroke-width="2.6"
+              stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="i-arrow-right" viewBox="0 0 24 24">
+        <path d="M8.5 4.5 16 12l-7.5 7.5" fill="none" stroke="currentColor" stroke-width="2.6"
+              stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="i-sound-on" viewBox="0 0 24 24">
+        <path d="M4 9.5h3L12 5.5v13L7 14.5H4z" fill="currentColor" />
+        <path d="M15.6 9a4.2 4.2 0 0 1 0 6M18.2 6.4a7.8 7.8 0 0 1 0 11.2" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </symbol>
+      <symbol id="i-sound-off" viewBox="0 0 24 24">
+        <path d="M4 9.5h3L12 5.5v13L7 14.5H4z" fill="currentColor" />
+        <path d="M16 9.4l5 5.2M21 9.4l-5 5.2" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" />
+      </symbol>
+      <symbol id="i-sparkle" viewBox="0 0 24 24">
+        <path d="M12 0c.9 6.7 4.4 10.2 12 12-7.6 1.8-11.1 5.3-12 12-.9-6.7-4.4-10.2-12-12C7.6 10.2 11.1 6.7 12 0Z"
+              fill="currentColor" />
+      </symbol>
+      <symbol id="i-play" viewBox="0 0 24 24">
+        <path d="M8 5.2v13.6L19 12z" fill="currentColor" />
+      </symbol>
+      <symbol id="i-stop" viewBox="0 0 24 24">
+        <rect x="6.5" y="6.5" width="4.4" height="11" rx="1.6" fill="currentColor" />
+        <rect x="13.1" y="6.5" width="4.4" height="11" rx="1.6" fill="currentColor" />
+      </symbol>
+      <symbol id="i-book" viewBox="0 0 24 24">
+        <path d="M3.5 4.8c3-1.3 5.6-1.3 8.5.7 2.9-2 5.5-2 8.5-.7v13.9c-3-1.3-5.6-1.3-8.5.7-2.9-2-5.5-2-8.5-.7z"
+              fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" />
+        <path d="M12 5.5v14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+      </symbol>
+    </defs>
+  </svg>
+
+  <div class="grain" aria-hidden="true"></div>
+
+  <div class="app">
+
+    <!-- ── Top bar ─────────────────────────────────────────────────────── -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand__badge" aria-hidden="true">
+          <svg><use href="#i-book" /></svg>
+        </span>
+        <span class="brand__text">
+          <strong class="brand__title">आरु की छींक</strong>
+          <span class="brand__sub">Aaru&rsquo;s Sneeze</span>
+        </span>
+      </div>
+
+      <div class="controls">
+        <button class="playbtn" id="playBtn" type="button"
+                aria-label="कहानी बड़ी करके देखो">
+          <span class="playbtn__ico" aria-hidden="true"><svg><use href="#i-play" /></svg></span>
+          <span class="playbtn__label" id="playLabel">चलाओ</span>
+        </button>
+
+        <button class="readbtn" id="readBtn" type="button" aria-pressed="false"
+                aria-label="पढ़कर सुनाओ">
+          <span class="readbtn__ico" aria-hidden="true">
+            <svg class="readbtn__play"><use href="#i-play" /></svg>
+            <svg class="readbtn__stop"><use href="#i-stop" /></svg>
+          </span>
+          <span class="readbtn__label" id="readLabel">पढ़कर सुनाओ</span>
+        </button>
+
+        <button class="iconbtn" id="soundBtn" type="button" aria-pressed="true"
+                aria-label="आवाज़ बंद करें">
+          <svg class="iconbtn__on"><use href="#i-sound-on" /></svg>
+          <svg class="iconbtn__off"><use href="#i-sound-off" /></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ── Stage : nav + book ──────────────────────────────────────────── -->
+    <main class="stage">
+      <section class="book" id="book" aria-roledescription="चित्र-कथा">
+        <div class="book__mat">
+
+          <!-- Both arrows start hidden and disabled: page one has nothing behind it,
+               and nothing in front of it until it has played. The script opens
+               them. -->
+          <button class="navbtn navbtn--prev is-hidden" id="prevBtn" type="button" disabled
+                  aria-label="पिछला पन्ना" aria-controls="book">
+            <img class="navbtn__art" draggable="false" src="assets/icons/nav-left.svg" alt="" />
+          </button>
+          <button class="navbtn navbtn--next is-hidden" id="nextBtn" type="button" disabled
+                  aria-label="अगला पन्ना" aria-controls="book">
+            <img class="navbtn__art" draggable="false" src="assets/icons/nav-right.svg" alt="" />
+          </button>
+
+          <div class="book__frame" id="frame">
+
+            <!-- two stacked slots let one page turn away while the next arrives.
+                 The story text lives inside the slot so it turns with its picture. -->
+            <div class="slot is-active" data-slot="0">
+              <img class="slot__art" draggable="false" alt="" src="assets/images/page-01.jpg"
+                   fetchpriority="high" decoding="async" />
+              <!-- cut-out layers, used by the cover only: Aaru rides in, then
+                   the title pops. At rest they recompose the original exactly. -->
+              <div class="cover" aria-hidden="true" hidden>
+                <div class="cover__flash"></div>
+                <div class="cover__part cover__hero"></div>
+                <div class="cover__part cover__title"></div>
+              </div>
+              <p class="scene__text" aria-hidden="true"></p>
+              <!-- the shading that gathers along this page as it bends away -->
+              <div class="slot__fold" aria-hidden="true"></div>
+            </div>
+            <div class="slot" data-slot="1" aria-hidden="true">
+              <img class="slot__art" draggable="false" alt="" decoding="async" />
+              <div class="cover" aria-hidden="true" hidden>
+                <div class="cover__flash"></div>
+                <div class="cover__part cover__hero"></div>
+                <div class="cover__part cover__title"></div>
+              </div>
+              <p class="scene__text" aria-hidden="true"></p>
+              <!-- the shading that gathers along this page as it bends away -->
+              <div class="slot__fold" aria-hidden="true"></div>
+            </div>
+
+            <!-- ambient life : dust · sparkles · puffs -->
+            <div class="ambience" id="ambience" aria-hidden="true">
+              <div class="layer layer--dust" id="dust"></div>
+              <div class="layer layer--sparks" id="sparks"></div>
+            </div>
+
+            <div class="frame__vignette" aria-hidden="true"></div>
+            <div class="frame__sheet" id="turnSheet" aria-hidden="true"></div>
+            <div class="frame__loader" id="loader" aria-hidden="true"><i></i><i></i><i></i></div>
+          </div>
+
+          <!-- the title-state invitation: only on the cover, only before Play -->
+          <button class="startbtn" id="startBtn" type="button"
+                  aria-label="कहानी चलाओ">
+            <span class="startbtn__disc" aria-hidden="true">
+              <span class="startbtn__ring"></span>
+              <img class="startbtn__art" draggable="false" src="assets/icons/play-button.svg" alt="" />
+            </span>
+          </button>
+
+          <!-- The idle hand. After a few seconds of stillness it appears beside
+               whatever the reader is waiting to be told to press: the play
+               button on the title page, the forward arrow once a page has
+               finished. It goes the moment they touch anything. -->
+          <img class="handhint" id="handHint" draggable="false" src="assets/icons/hand-tap.png"
+               alt="" aria-hidden="true" />
+        </div>
+
+        <!-- ── Phone fallback: the same words, below the picture ─────────── -->
+        <div class="caption" aria-hidden="true">
+          <p class="caption__text" id="storyText"></p>
+        </div>
+      </section>
+
+      <!-- leaves Play Mode; fades in whenever the reader moves or taps -->
+      <button class="exitbtn" id="exitBtn" type="button"
+              aria-label="बाहर आओ">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" fill="none" stroke="currentColor"
+                stroke-width="2.4" stroke-linecap="round" />
+        </svg>
+      </button>
+    </main>
+
+  </div>
+
+  <!-- Jump to a page. The button lives outside the book so it is reachable
+       from every page, and the panel is filled by the script from the same
+       page list the book itself reads, so the two can never disagree. -->
+  <button class="jumpbtn" id="jumpBtn" type="button"
+          aria-label="पन्ने चुनो" aria-expanded="false" aria-controls="jumpPanel">
+    <span class="jumpbtn__bars" aria-hidden="true"><i></i><i></i><i></i></span>
+  </button>
+
+  <div class="jumpveil" id="jumpVeil" hidden></div>
+
+  <nav class="jump" id="jumpPanel" aria-labelledby="jumpTitle" hidden>
+    <h2 class="jump__title" id="jumpTitle">पन्ने चुनो</h2>
+    <ul class="jump__grid" id="jumpGrid"></ul>
+  </nav>
+
+  <div class="sr-only" id="liveHint" aria-live="polite"></div>
+
+  <script src="script.js?v=35" defer></script>
+</body>
+</html>
