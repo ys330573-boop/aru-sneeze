@@ -44,7 +44,7 @@
   /* vertical room taken by everything that is not the picture: the top bar
      and the page padding. The words live inside the art and nothing sits
      below it, so the book is sized to fill whatever height is left. */
-  --vfit: 160px;
+  --vfit: 58px;
 
   /* elevation */
   --sh-book:
@@ -211,7 +211,7 @@ button { font: inherit; color: inherit; }
   position: relative;
   /* the 16/9 factor turns spare height into picture width, so a short
      laptop window shows the whole spread instead of a scrollbar */
-  width: min(100%, 1060px, calc((100svh - var(--vfit)) * 16 / 9));
+  width: min(100%, calc((100svh - var(--vfit)) * 16 / 9));
   display: flex; flex-direction: column; align-items: center;
 }
 
@@ -444,16 +444,27 @@ button { font: inherit; color: inherit; }
 .scene__text {
   position: absolute; z-index: 3;
   margin: 0;
-  width: var(--tw, 40%);
-  /* --tf is set per page so a long passage steps down a little and a short
-     one grows: big enough for a new reader, never taller than the picture */
-  font-size: clamp(14px, calc(var(--tf, 3.6) * 1cqw), 54px);
-  font-weight: 600;
-  line-height: 1.52;
-  color: #37271a;
-  /* left-aligned: one clean edge for the eye to return to, instead of the
-     ragged double edge centring gives a narrow column */
-  text-align: left;
+  /* Each page's box comes from the Figma design: its left edge, top edge and
+     width, as percentages of the picture. See TEXT_BOX in script.js. */
+  left: var(--tx, 4%); top: var(--ty, 18%); width: var(--tw, 38%);
+
+  /* 50px, as the design has it — but never at the cost of losing a word.
+     The design's 50px sits on a 1920-wide slide; our picture is smaller, so
+     the same 50px fills proportionally more of it and on the wordiest pages
+     the block grows taller than the picture. The frame hides overflow, so
+     those last lines would be cut off rather than spill. The second term is
+     the ceiling that keeps every page whole, measured against the longest
+     ones (pages 3, 8 and 10). It is exactly 50px once the picture is about
+     1390px wide or more, and steps down below that.
+        Strict 50px everywhere?  drop the min().
+        The design's proportion?  use 2.6cqw (50/1920).                     */
+  font-size: min(50px, 3.6cqw);
+  /* SemiBold on every page but one, which the design sets in Medium */
+  font-weight: var(--tweight, 600);
+  line-height: normal;
+  color: #36271a;
+  /* centred, as the design has it */
+  text-align: center;
   text-wrap: pretty;
   hyphens: none;
   /* a whisper of light so dark ink stays crisp over paint, with no hard edge */
@@ -462,32 +473,20 @@ button { font: inherit; color: inherit; }
     0 0 .35em rgba(255, 253, 246, .95),
     0 0 1.1em rgba(255, 252, 242, .8);
 }
-.scene__text::before {                 /* the soft wash, wider than the text */
-  content: ""; position: absolute; inset: -8% -10%;
-  z-index: -1; pointer-events: none;
-  background: radial-gradient(58% 52% at 50% 50%,
-    rgba(255, 253, 246, .78) 0%, rgba(255, 252, 243, .5) 55%, rgba(255, 252, 243, 0) 100%);
-}
 
 /* One sentence per line (built by sentenceLines() in script.js). A sentence
    longer than the column still wraps, and the hanging indent marks the
    overflow as a continuation rather than a new thought. */
 .ln {
   display: block;
-  padding-left: .95em;
-  text-indent: -.95em;
+  /* no hanging indent: the lines are centred now, and an indent would pull
+     each one off the centre it is measured against */
 }
 .ln + .ln { margin-top: .32em; }
 
 /* the words on the visible page can be tapped to hear them again — the
    pointer shape is the only cue; there is no hover effect on the scene */
 .slot.is-active .scene__text { pointer-events: auto; }
-
-.scene__text[data-side="left"]  { left:  3.5%; }
-.scene__text[data-side="right"] { right: 3.5%; }
-.scene__text[data-valign="center"] { top: 50%; translate: 0 -50%; }
-.scene__text[data-valign="top"]    { top: 7%; }
-.scene__text[data-valign="bottom"] { bottom: 7%; }
 
 /* the sneezes get to be loud */
 :where(.scene__text, .caption__text) em {
@@ -994,6 +993,220 @@ button { font: inherit; color: inherit; }
   100% { transform: scale(1.55) translate3d(12%, -14%, 0); opacity: 0; }
 }
 
+/* ── 7b. Jump menu ───────────────────────────────────────────────────────────
+   A way past the current page and a way back to any other. Two things live in
+   it: skip, which goes on now without waiting for the page to be read out,
+   and a grid of the pages themselves.
+
+   The grid is pictures rather than page numbers because the reader this book
+   is for cannot necessarily read one — but can recognise a red bicycle. It is
+   built from the same page list the book reads, so it can never offer a page
+   that does not exist.
+   ------------------------------------------------------------------------- */
+.jumpbtn {
+  position: fixed; z-index: 30;
+  top: clamp(10px, 1.6vh, 20px); left: clamp(10px, 1.6vw, 22px);
+  display: grid; place-items: center;
+  width: 44px; height: 44px;
+  border: 0; border-radius: 50%;
+  /* the same warm dark as the exit button: these two belong to the app
+     rather than to the story */
+  background: rgba(26, 18, 12, .74);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  color: #fff; cursor: pointer;
+  box-shadow: 0 8px 20px -8px rgba(0, 0, 0, .6);
+  transition: transform .22s ease, background-color .22s ease;
+}
+.jumpbtn:hover  { background: rgba(26, 18, 12, .88); }
+.jumpbtn:active { transform: scale(.94); }
+
+.jumpbtn__bars { display: grid; gap: 4px; width: 20px; }
+.jumpbtn__bars i {
+  display: block; height: 2.4px; border-radius: 2px;
+  background: currentColor;
+  transition: transform .26s var(--turn-ease), opacity .2s ease;
+}
+/* open, the bars become a cross, so one button says both things */
+.jumpbtn[aria-expanded="true"] .jumpbtn__bars i:nth-child(1) { transform: translateY(6.4px) rotate(45deg); }
+.jumpbtn[aria-expanded="true"] .jumpbtn__bars i:nth-child(2) { opacity: 0; }
+.jumpbtn[aria-expanded="true"] .jumpbtn__bars i:nth-child(3) { transform: translateY(-6.4px) rotate(-45deg); }
+
+/* the veil dims the story, so the panel reads as a step out of it, and is
+   what a tap outside the panel lands on */
+.jumpveil {
+  position: fixed; inset: 0; z-index: 28;
+  background: rgba(28, 18, 10, .5);
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  opacity: 0; transition: opacity .28s ease;
+}
+.jumpveil.is-open { opacity: 1; }
+
+.jump {
+  position: fixed; z-index: 29;
+  inset: clamp(8px, 2vh, 26px);
+  margin: auto;
+  width: min(96vw, 920px); max-height: min(86svh, 760px);
+  overflow-y: auto; overscroll-behavior: contain;
+  padding: clamp(14px, 2.2vw, 26px);
+  border-radius: clamp(18px, 2vw, 28px);
+  background: linear-gradient(168deg, #fffdf6, #f6ecd8);
+  box-shadow: 0 30px 70px -24px rgba(40, 26, 14, .6);
+  opacity: 0; transform: translateY(10px) scale(.985);
+  transition: opacity .28s ease, transform .3s var(--turn-ease);
+}
+.jump.is-open { opacity: 1; transform: none; }
+
+.jump__title {
+  margin: 0 0 clamp(10px, 1.4vw, 14px);
+  font-size: clamp(1.1rem, 2.4vw, 1.5rem); font-weight: 800;
+  color: var(--ink);
+}
+
+/* skip: the way on without waiting */
+.jump__skip {
+  display: inline-flex; align-items: center; gap: 10px;
+  margin: 0 0 clamp(12px, 1.6vw, 18px);
+  padding: .55em 1.1em;
+  border: 0; border-radius: 999px;
+  background: var(--terracotta); color: #fff;
+  font-size: clamp(.95rem, 1.9vw, 1.15rem); font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 20px -10px rgba(164, 62, 40, .9);
+  transition: transform .2s var(--turn-ease), background-color .2s ease, opacity .2s ease;
+}
+.jump__skip:hover  { background: #a8402a; }
+.jump__skip:active { transform: scale(.96); }
+.jump__skip:disabled { opacity: .4; cursor: default; box-shadow: none; }
+
+/* two chevrons, the usual sign for "go on" */
+.jump__skip-ico { display: flex; gap: 2px; }
+.jump__skip-ico i {
+  width: 7px; height: 7px;
+  border-top: 2.4px solid currentColor; border-right: 2.4px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.jump__grid {
+  display: grid; gap: clamp(8px, 1.4vw, 16px);
+  grid-template-columns: repeat(auto-fill, minmax(clamp(120px, 15vw, 190px), 1fr));
+  margin: 0; padding: 0; list-style: none;
+}
+
+.jump__item { position: relative; }
+
+.jump__pick {
+  display: block; width: 100%; padding: 0;
+  border: 3px solid transparent; border-radius: 14px;
+  background: #e8dcc2; cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 8px 18px -12px rgba(40, 26, 14, .7);
+  transition: transform .2s var(--turn-ease), border-color .2s ease, box-shadow .2s ease;
+}
+.jump__pick img {
+  width: 100%; aspect-ratio: 1600 / 900;
+  object-fit: cover; display: block;
+}
+.jump__pick:hover, .jump__pick:focus-visible {
+  transform: translateY(-3px) scale(1.02);
+  border-color: rgba(58, 123, 213, .85);
+  box-shadow: 0 14px 24px -14px rgba(40, 26, 14, .8);
+}
+.jump__pick[aria-current="page"] { border-color: var(--terracotta); }
+
+/* the page's number, so a grown-up can find one by number too */
+.jump__no {
+  position: absolute; top: 8px; left: 8px;
+  min-width: 26px; padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(26, 18, 12, .8); color: #fff;
+  font-size: .82rem; font-weight: 700; text-align: center;
+  pointer-events: none;
+}
+
+/* ── 7c. The ending: shutters, then the film ────────────────────────────────
+   t1.svg is one wooden board cut into a top and a bottom panel. This is that,
+   as two elements that can move: they wait off-screen, slide in to meet in the
+   middle, and slide back out. What they open onto is the film, which starts
+   while they are shut, so it is already running when they part.
+
+   The wood is the picture the SVG carried, saved as its own file. The SVG held
+   a single 1.2MB PNG twice over, 1.7MB in all; two halves of one 112KB JPEG
+   look identical, weigh a fifteenth as much, and can be animated — which the
+   halves inside an SVG loaded as an image cannot.
+   ------------------------------------------------------------------------- */
+.finale { position: absolute; inset: 0; pointer-events: none; }
+
+.finale__film {
+  position: absolute; inset: 0; z-index: 9;
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: center;
+  opacity: 0; visibility: hidden;
+}
+.finale.is-playing .finale__film { opacity: 1; visibility: visible; }
+
+/* ── 7c. The paper transition ────────────────────────────────────────────────
+   Loose blank sheets fly in until the screen is nothing but paper, hold for a
+   moment, then drift away and leave whatever is now underneath.
+
+   The look is all here; the choreography is in script.js. Only transform and
+   opacity are ever animated, which is what keeps it on the compositor and off
+   the main thread — nothing here triggers layout while it runs.
+   ------------------------------------------------------------------------- */
+.paper {
+  position: fixed; inset: 0;
+  /* The stack, bottom to top: the story and its film (.app, z 1, and the paper
+     texture over it at z 3) — then this — then the controls (z 28-30: the jump
+     menu, its veil, the hamburger and the exit button). So the paper always
+     covers the film and never covers a button. */
+  z-index: 20;
+  pointer-events: none;            /* never in the way of the story */
+  overflow: hidden;                /* sheets fly in from outside; keep the page from scrolling */
+  visibility: hidden;              /* nothing to see, and nothing to paint, at rest */
+}
+.paper.is-running { visibility: visible; }
+
+/* The safety net. Sheets are sized and placed to cover the viewport on their
+   own, but a hairline between two of them at some odd aspect ratio would show
+   the story through, so a paper-coloured backing fades in for the held moment
+   and out again as they leave. It is behind every sheet. */
+.paper__backing {
+  position: absolute; inset: 0; z-index: 0;
+  background: #fdfaf3;
+  opacity: 0;
+}
+
+/* One sheet. Warm white, a soft edge shadow so it reads as a physical thing
+   sitting above the others, and the faintest grain — the same noise the book's
+   paper texture uses, at a lower strength. No text, no graphics. */
+.paper__sheet {
+  position: absolute; top: 0; left: 0;
+  border-radius: 2px;
+  background-color: #fffdf7;
+  background-image:
+    /* the grain */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.045'/%3E%3C/svg%3E"),
+    /* a whisper of shading across the sheet, so it is not a flat fill */
+    linear-gradient(112deg, #fffefb 0%, #fdfaf2 46%, #f7f1e4 100%);
+  box-shadow:
+    0 1px 2px rgba(60, 44, 24, .10),
+    0 10px 24px -10px rgba(60, 44, 24, .28);
+  will-change: transform;
+  backface-visibility: hidden;     /* keeps the edges crisp mid-rotation */
+}
+
+/* the demo trigger: deliberately plain, and only ever shown with ?demo */
+.paperdemo {
+  position: fixed; z-index: 61;
+  bottom: clamp(10px, 1.6vh, 20px); left: clamp(10px, 1.6vw, 22px);
+  padding: .5em 1em;
+  border: 0; border-radius: 999px;
+  background: rgba(26, 18, 12, .78); color: #fff;
+  font: inherit; font-size: .85rem; font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 20px -8px rgba(0, 0, 0, .6);
+}
+.paperdemo:active { transform: scale(.96); }
+
 /* ── 8. Responsive ───────────────────────────────────────────────────────── */
 
 /* tablet — the artwork gives up a little size, the buttons stay outside it */
@@ -1123,4 +1336,23 @@ button { font: inherit; color: inherit; }
   .handhint.is-showing { animation: none !important; }
   .caption__text { transition-duration: .12s; }
   .frame__sheet { display: none; }
+
 }
+
+/* ── 10. The words are off ───────────────────────────────────────────────────
+   Every page shows its picture and nothing else: the story text over the art
+   and the caption under it on narrow screens are both hidden.
+
+   Hidden rather than deleted, and deliberately so. The narration works out
+   whether a page has a recording by reading the words in that page — see
+   PageAudio.bind in script.js — so emptying them would take the audio with
+   it, and with the audio goes the cue that makes the forward arrow appear.
+   The words stay in the markup, unseen, doing that one job.
+
+   This block sits last in the file on purpose: the narrow-screen layout above
+   sets `.caption { display: block }`, and coming after it is what lets these
+   two rules win without resorting to !important.
+
+   To bring the words back, delete this block.
+   ------------------------------------------------------------------------- */
+.scene__text, .caption { display: none; }

@@ -16,7 +16,7 @@
 
 <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml" />
 <!-- bump ?v= after editing so a plain refresh never serves a cached copy -->
-<link rel="stylesheet" href="style.css?v=43" />
+<link rel="stylesheet" href="style.css?v=52" />
 <!-- the picture the book opens on, so it is on screen as early as possible -->
 <link rel="preload" as="image" href="assets/images/page-01.jpg" />
 </head>
@@ -158,6 +158,11 @@
             <div class="frame__vignette" aria-hidden="true"></div>
             <div class="frame__sheet" id="turnSheet" aria-hidden="true"></div>
             <div class="frame__loader" id="loader" aria-hidden="true"><i></i><i></i><i></i></div>
+            <!-- The ending: the film, revealed by the paper transition. Inside the
+                 frame, so it is clipped to the picture exactly like a page. -->
+            <div class="finale" id="finale" aria-hidden="true">
+              <video class="finale__film" id="finaleFilm" playsinline preload="none"></video>
+            </div>
           </div>
 
           <!-- the title-state invitation: only on the cover, only before Play -->
@@ -207,11 +212,33 @@
 
   <nav class="jump" id="jumpPanel" aria-labelledby="jumpTitle" hidden>
     <h2 class="jump__title" id="jumpTitle">पन्ने चुनो</h2>
+
+    <!-- skip: go on now, without waiting for the page to be read out -->
+    <button class="jump__skip" id="jumpSkip" type="button"
+            aria-label="पढ़े जाने का इंतजार किे बिना अगला पन्ना">
+      <span class="jump__skip-ico" aria-hidden="true"><i></i><i></i></span>
+      आगे बढ़ो
+    </button>
+
     <ul class="jump__grid" id="jumpGrid"></ul>
   </nav>
 
+
+  <!-- The paper transition. Sheets are built into this by the script when a
+       transition runs and cleared out afterwards, so the page carries no
+       hundred idle elements around; the backing behind them only shows during
+       the moment the screen is meant to be fully covered. It sits above
+       everything and takes no clicks. -->
+  <div class="paper" id="paper" aria-hidden="true">
+    <div class="paper__backing" id="paperBacking"></div>
+  </div>
+
+  <!-- a way to watch the transition on demand: add ?demo to the URL -->
+  <button class="paperdemo" id="paperDemo" type="button" hidden>
+    paper transition
+  </button>
   <div class="sr-only" id="liveHint" aria-live="polite"></div>
 
-  <script src="script.js?v=35" defer></script>
+  <script src="script.js?v=46" defer></script>
 </body>
 </html>

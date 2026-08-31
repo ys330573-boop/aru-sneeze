@@ -150,7 +150,7 @@
       puffs: [{ x: 66, y: 55, size: 16 }]
     },
     {
-      img: "assets/images/page-10.png",
+      img: "assets/images/page-10.jpg",
       alt: {
         /* the artwork has no cat in it, unlike the words, so the description
            of the picture and the telling of the story part company here */
@@ -205,26 +205,43 @@
   ];
 
 
-  /* Where the words sit in each picture — always the empty side of that
-     illustration, so the artwork itself is never covered.
-     [ side, vertical, column width, type size in cqw ] */
-  const SPOTS = [
-    null,                                /*  1  cover: title is painted into the art */
-    ["left",  "center", "38%", 3.6],     /*  2  the house stands on the right         */
-    ["right", "top",    "40%", 2.8],     /*  3  boy centre-left, flour plume below     */
-    ["left",  "center", "40%", 4.5],     /*  4  Aaru peers into the tin on the right  */
-    ["right", "center", "41%", 3.7],     /*  5  he rides in from the left             */
-    ["left",  "center", "37%", 4.2],     /*  6  boy and bicycle fly off to the right  */
-    ["left",  "center", "40%", 4.5],     /*  7  he stands on the right                */
-    ["right", "top",    "43%", 3.3],     /*  8  cart left, blurred shop lower right   */
-    ["left",  "top",    "43%", 3.7],     /*  9  dog and stall fill the lower half     */
-    ["right", "center", "40%", 3.2],     /* 10  doorway left, boy centre, wall right  */
-    ["left",  "center", "47%", 4.0],     /* 11  shelves and boy on the right          */
-    ["right", "center", "45%", 3.7],     /* 12  shelves left, Amma in the middle      */
-    ["right", "center", "45%", 3.8]      /* 13  Amma and Aaru on the left             */
+  /* Where the words sit on each picture, taken from the Figma design (file
+     i5spwg0NKSC0kfYp4zNmuN, the STORY section at node 305:134). Every page
+     there is a 1920 x 1080 slide with the text in a hand-placed box, so these
+     are that box's left edge, top edge and width as percentages of the
+     picture — the same proportions at any screen size, our frame being the
+     same 16:9 shape.
+
+     The weight is per row because the design is not uniform about it: page 3
+     is set in Medium and every other page in SemiBold. Copied as found rather
+     than tidied, since the brief was to match the design.
+
+     The size and colour are the same on every page — 50px on a 1920-wide
+     slide, #36271a — so they live in .scene__text rather than being repeated
+     twelve times here.
+
+     Rows are labelled by the artwork they belong to, not by the page's place
+     in the array, so moving a page cannot silently shift the table.
+     [ left%, top%, width%, weight ]                                       */
+  const TEXT_BOX = [
+    null,                               /* page-01  title painted into the art    */
+    [ 3.28, 18.98, 33.49, 600],         /* page-02  house right, words left       */
+    [58.80, 13.06, 37.19, 500],         /* page-03  flour plume left  (Medium)    */
+    [ 7.34, 16.67, 29.22, 600],         /* page-04  Aaru and the tin on the right */
+    [56.93, 12.69, 37.24, 600],         /* page-05  he rides in from the left     */
+    [ 7.19, 17.59, 33.33, 600],         /* page-06  boy and bicycle fly off right */
+    [ 5.89, 16.02, 33.33, 600],         /* page-07  he stands on the right        */
+    [63.33, 10.09, 30.16, 600],         /* page-08  juice cart on the left        */
+    [ 7.29, 12.04, 46.25, 600],         /* page-09  dog and stall, lower half     */
+    [57.19, 11.94, 40.26, 600],         /* page-10  doorway left, boy centre      */
+    [ 6.30, 22.41, 33.33, 600],         /* page-11  falling pots on the right     */
+    [51.88, 22.59, 41.09, 600],         /* page-12  Amma and the locket, left     */
+    [54.04, 16.05, 41.01, 600]          /* page-13  Amma and Aaru on the left     */
   ];
-  SPOTS.forEach((s, i) => {
-    if (s && PAGES[i]) PAGES[i].spot = { side: s[0], v: s[1], w: s[2], f: s[3] };
+  TEXT_BOX.forEach((b, i) => {
+    if (b && PAGES[i]) {
+      PAGES[i].box = { x: b[0] + "%", y: b[1] + "%", w: b[2] + "%", weight: b[3] };
+    }
   });
 
   /* ── tiny helpers ─────────────────────────────────────────────────────── */
@@ -425,7 +442,7 @@
     const MUTE = "aaru.sound";
     /* ?v= bumps whenever the clips are re-cut — the filenames stay the same,
        so without it a refresh would quietly serve the previous audio */
-    const CUT = 3;
+    const CUT = 5;
     const clip = (n) => `assets/audio/page-${String(n).padStart(2, "0")}.mp3?v=${CUT}`;
 
     let on    = localStorage.getItem(KEY)  !== "off";   /* narration on by default */
@@ -519,6 +536,10 @@
          between a page the reader must wait out and one with nothing to wait
          for. */
       get hasClip() { return hasText && !!pageNo; },
+
+      /* the live element, so PopArt can follow the playhead. Read only —
+         nothing outside this module ever drives playback. */
+      get media() { return el; },
 
       /* called on every page change; `hosts` is only used to tell whether the
          page has any words, since a wordless page (the cover) has no clip */
@@ -720,20 +741,20 @@
       const text = slot.querySelector(".scene__text");
       text.replaceChildren(sentenceLines(page.text ? page.text.hi : ""));
       text.hidden = !page.text;
-      /* The two slots are reused turn after turn, so a spot has to be cleared
-         as deliberately as it is set — otherwise the first page that asks for
-         its words on the right hands that down to every page after it that
-         never asked for anything. */
-      if (page.spot) {
-        text.dataset.side = page.spot.side;
-        text.dataset.valign = page.spot.v;
-        text.style.setProperty("--tw", page.spot.w);
-        text.style.setProperty("--tf", String(page.spot.f));
+      /* The two slots are reused turn after turn, so the box has to be cleared
+         as deliberately as it is set — otherwise the first page that places
+         its words hands that placement down to every page after it that has
+         none of its own. */
+      if (page.box) {
+        text.style.setProperty("--tx", page.box.x);
+        text.style.setProperty("--ty", page.box.y);
+        text.style.setProperty("--tw", page.box.w);
+        text.style.setProperty("--tweight", String(page.box.weight));
       } else {
-        delete text.dataset.side;
-        delete text.dataset.valign;
+        text.style.removeProperty("--tx");
+        text.style.removeProperty("--ty");
         text.style.removeProperty("--tw");
-        text.style.removeProperty("--tf");
+        text.style.removeProperty("--tweight");
       }
       return text;
     }
@@ -1206,6 +1227,510 @@
        page is still being read aloud there is nothing to point at, so it stays
        away instead of nagging over the narration.
        ------------------------------------------------------------------- */
+    /* ── the paper transition ─────────────────────────────────────────────
+       Loose blank sheets fly in from every direction until the screen is
+       nothing but paper, hold for a moment, then drift away and leave
+       whatever is underneath by then. Used to get from one scene to the next
+       without either of them being seen to change.
+
+       Coverage is by construction rather than by hope. The sheets are dealt
+       onto a grid whose shape follows the window, each sheet a good deal
+       larger than its cell — larger than the cell's diagonal, in fact, which
+       is what makes the cover hold however the sheet is turned — and then
+       jittered off its centre by less than the slack that gives. Because the
+       grid is built from the live window every time, it is right on a phone
+       and on a desktop without a media query.
+
+       Only transform and opacity are animated, so the whole thing runs on the
+       compositor: no layout, no paint, no jank. Sheets are created per run and
+       thrown away afterwards, so nothing idles in the DOM between times.
+       ------------------------------------------------------------------- */
+    const Paper = (() => {
+      const host    = $("#paper");
+      const backing = $("#paperBacking");
+
+      /* ── the dials ──────────────────────────────────────────────────── */
+      const SHEETS      = 22;        /* how many sheets; the one number to turn */
+      const ENTER_MIN   = 800;       /* a sheet's flight in, ms            */
+      const ENTER_MAX   = 1200;
+      const ENTER_STAGGER = 260;     /* spread of their start times        */
+      const HOLD        = 420;       /* fully covered, ms                  */
+      const EXIT_MIN    = 1200;      /* and their drift away, ms           */
+      const EXIT_MAX    = 1800;
+      const EXIT_STAGGER  = 420;
+      const COVER_CAP   = 2500;      /* longest the paper will wait on a hook */
+      const TILT        = 12;        /* max resting tilt, degrees          */
+      const EASE_IN     = "cubic-bezier(.16,.84,.30,1)";   /* arriving: fast, then settling */
+      const EASE_OUT    = "cubic-bezier(.42,0,.58,1)";     /* leaving: gentle both ends     */
+
+      let running = false;
+
+      /* Deal the sheets: one per grid cell, over-sized and jittered. Returns
+         the elements with the resting position each one is flying towards. */
+      function deal() {
+        const vw = window.innerWidth, vh = window.innerHeight;
+        /* a grid of about SHEETS cells, shaped like the window */
+        const cols = Math.max(2, Math.round(Math.sqrt(SHEETS * vw / vh)));
+        const rows = Math.max(2, Math.ceil(SHEETS / cols));
+        const cw = vw / cols, ch = vh / rows;
+        /* big enough that a tilted sheet still covers its cell corner to
+           corner, with room left over for the jitter below */
+        const diag = Math.hypot(cw, ch);
+        const w = diag * 1.22, h = diag * 1.22;
+        const jitter = Math.min(cw, ch) * 0.10;
+        const reach = Math.hypot(vw, vh) * 1.15;   /* how far off-screen they wait */
+
+        const sheets = [];
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const el = document.createElement("div");
+            el.className = "paper__sheet";
+            el.style.width = w + "px";
+            el.style.height = h + "px";
+            /* depth: a few sheets ride slightly larger and above the rest, so
+               the pile has a front and a back rather than being one plane */
+            const depth = rnd(0, 1);
+            const scale = 0.94 + depth * 0.12;
+            el.style.zIndex = String(1 + Math.round(depth * 8));
+            el.style.opacity = String(0.97 + depth * 0.03);
+
+            /* where it comes to rest: its cell, nudged off centre */
+            const x = c * cw + cw / 2 - w / 2 + rnd(-jitter, jitter);
+            const y = r * ch + ch / 2 - h / 2 + rnd(-jitter, jitter);
+            const tilt = rnd(-TILT, TILT);
+
+            /* where it flies in from: straight out past the nearest edge,
+               spun further round than it will end up */
+            const angle = rnd(0, Math.PI * 2);
+            const fromX = x + Math.cos(angle) * reach;
+            const fromY = y + Math.sin(angle) * reach;
+
+            sheets.push({
+              el, scale,
+              rest:  `translate3d(${x}px, ${y}px, 0) rotate(${tilt}deg) scale(${scale})`,
+              start: `translate3d(${fromX}px, ${fromY}px, 0) rotate(${tilt + rnd(-40, 40)}deg) scale(${scale * rnd(0.86, 1.02)})`,
+              x, y, tilt
+            });
+            el.style.transform = sheets[sheets.length - 1].start;
+            host.appendChild(el);
+          }
+        }
+        return sheets;
+      }
+
+      /* every sheet's flight, as one promise */
+      function flight(sheets, key, opts) {
+        return Promise.all(sheets.map((s, i) => {
+          const a = s.el.animate(
+            [{ transform: key === "in" ? s.start : s.rest },
+             { transform: key === "in" ? s.rest : s.away }],
+            {
+              duration: rnd(opts.min, opts.max),
+              delay: rnd(0, opts.stagger),
+              easing: opts.easing,
+              fill: "both"
+            });
+          return a.finished.catch(() => {});   /* a cancelled flight is not a failure */
+        }));
+      }
+
+      /* where each sheet goes when it leaves: a different direction from the
+         one it arrived by, turning as it goes */
+      function scatter(sheets) {
+        const reach = Math.hypot(window.innerWidth, window.innerHeight) * 1.25;
+        sheets.forEach((s) => {
+          const angle = rnd(0, Math.PI * 2);
+          s.away = `translate3d(${s.x + Math.cos(angle) * reach}px, ${s.y + Math.sin(angle) * reach}px, 0)`
+                 + ` rotate(${s.tilt + rnd(-70, 70)}deg) scale(${s.scale * rnd(0.92, 1.14)})`;
+        });
+      }
+
+      /* In calm mode there is no flying: the screen simply goes to paper and
+         back, which does the same job without anything moving across it. */
+      function calmRun(atCover) {
+        const fade = 240;
+        host.classList.add("is-running");
+        const b1 = backing.animate([{ opacity: 0 }, { opacity: 1 }], { duration: fade, fill: "both" });
+        return b1.finished
+          .then(() => { atCover(); return wait(HOLD); })
+          .then(() => backing.animate([{ opacity: 1 }, { opacity: 0 }], { duration: fade, fill: "both" }).finished)
+          .then(() => { backing.style.opacity = ""; host.classList.remove("is-running"); });
+      }
+
+      const wait = (ms) => new Promise((go) => setTimeout(go, ms));
+
+      /* Run the transition.
+
+         Three points where a caller can act, and the order of them is the
+         whole reason this exists:
+
+           prepare  as the sheets start flying in. Whatever the next scene
+                    needs loading, load it now — the flight buys about a
+                    second of cover to do it in.
+           covered  the screen is paper and nothing else. This is the moment
+                    to START the next scene, not merely to swap it in: it is
+                    AWAITED, so the sheets do not begin to leave until it
+                    resolves. A video started here is already running, with
+                    real frames, before the first sheet moves.
+           done     the last sheet has gone.
+
+         The awaited `covered` hook is capped, because a scene that never
+         becomes ready must not leave the reader staring at blank paper: past
+         COVER_CAP the sheets leave regardless. */
+      function run(hooks) {
+        if (running) return Promise.resolve();
+        running = true;
+        const done = () => { running = false; };
+
+        /* the older shape, playPaperTransition(fn), still means "after" */
+        const h = typeof hooks === "function" ? { covered: hooks } : (hooks || {});
+
+        const covered = () => {
+          let out;
+          try { out = h.covered && h.covered(); } catch { /* a hook must not strand the paper */ }
+          /* a hook may be async — wait for it, but never for ever */
+          return Promise.race([
+            Promise.resolve(out).catch(() => {}),
+            wait(COVER_CAP)
+          ]);
+        };
+
+        if (calm()) {
+          return calmRun(covered).then(() => { if (h.done) h.done(); }).then(done, done);
+        }
+
+        host.classList.add("is-running");
+        const sheets = deal();
+        /* the loading happens under cover of the flight, not before it */
+        try { if (h.prepare) h.prepare(); } catch { /* as above */ }
+
+        return flight(sheets, "in", { min: ENTER_MIN, max: ENTER_MAX, stagger: ENTER_STAGGER, easing: EASE_IN })
+          .then(() => {
+            /* covered: hold the backing up behind the pile so no seam can
+               show, then start the next scene and wait for it to be running */
+            backing.style.opacity = "1";
+            return covered();
+          })
+          .then(() => wait(HOLD))
+          .then(() => {
+            scatter(sheets);
+            /* the backing goes first and quickly, while the sheets still
+               cover everything, so what is underneath is never revealed by
+               the backing fading rather than by the paper leaving */
+            backing.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, fill: "both" }).finished
+              .then(() => { backing.style.opacity = ""; });
+            return flight(sheets, "out", { min: EXIT_MIN, max: EXIT_MAX, stagger: EXIT_STAGGER, easing: EASE_OUT });
+          })
+          .then(() => {
+            sheets.forEach((s) => s.el.remove());
+            host.classList.remove("is-running");
+            done();
+            if (h.done) h.done();
+          }, () => {
+            /* whatever went wrong, do not leave the screen covered in paper */
+            sheets.forEach((s) => s.el.remove());
+            backing.style.opacity = "";
+            host.classList.remove("is-running");
+            done();
+          });
+      }
+
+      return { run, get running() { return running; }, SHEETS };
+    })();
+
+    /* Is this video actually able to play? Resolves true once the browser has
+       enough of it to run without stalling, false if it errors — and either
+       way it gives up after `timeout` rather than hanging the caller.
+
+       Three events are watched, not one, because browsers disagree about which
+       arrives: `canplay` is the one that means what we want, `loadeddata` gets
+       there first on some mobile Safari builds, and `playing` covers the case
+       where playback has already begun before we started listening. A video
+       with preload="none" loads nothing at all until load() is called, so a
+       caller must do that first — prepareFilm below does.
+
+       This is exported because it is generally useful, and because the caller,
+       not the transition, is what knows which element matters. */
+    window.waitForVideoReady = function waitForVideoReady(video, timeout = 4000) {
+      /* HAVE_FUTURE_DATA: a frame now and more coming */
+      if (video.readyState >= 3) return Promise.resolve(true);
+      return new Promise((settle) => {
+        let done = false;
+        const finish = (ok) => {
+          if (done) return;
+          done = true;
+          ["canplay", "loadeddata", "playing"].forEach((e) => video.removeEventListener(e, ready));
+          video.removeEventListener("error", failed);
+          clearTimeout(timer);
+          settle(ok);
+        };
+        const ready  = () => finish(true);
+        const failed = () => finish(false);
+        ["canplay", "loadeddata", "playing"].forEach((e) => video.addEventListener(e, ready));
+        video.addEventListener("error", failed);
+        /* out of time: say whether there is at least a frame to show */
+        const timer = setTimeout(() => finish(video.readyState >= 2), timeout);
+      });
+    };
+
+    /* The reusable form asked for:
+           playPaperTransition(() => playNextVideo())
+       and the fuller one, which is what makes the reveal real:
+           playPaperTransition({ prepare, covered, done })
+
+       In the short form the function is the `covered` hook — it runs while the
+       screen is paper, and the sheets wait for it before they leave. That is
+       the ordering that matters: prepare, then start, then let the paper go. */
+    window.playPaperTransition = function playPaperTransition(hooks) {
+      return Paper.run(hooks);
+    };
+
+    /* ── the ending ───────────────────────────────────────────────────────
+       The last page has said its piece, so the paper transition runs: sheets
+       cover the screen, the film takes the picture's place while they are over
+       it, and when they drift away the film is there and starts.
+
+       The film is loaded while the sheets fly in and put in place, paused on
+       its first frame, while they cover the screen. So what the sheets uncover
+       is a real frame rather than a blank — and then it waits a beat, PLAY_DELAY
+       below, before it moves.
+
+       Waiting rather than playing behind the paper is deliberate: the hold and
+       the drift away take some two seconds together, and a film that started
+       under cover would spend its opening two seconds unseen.
+
+       Nothing here waits on the film's own length: it announces its own end.
+
+       The film has a sound track of its own and plays it. It is not muted —
+       by this point the reader has pressed Play, so the browser has the
+       gesture it wants before it will let sound start unasked, and the page's
+       own narration has just finished, so there is nothing for it to talk
+       over. Two things can still refuse it, and both are handled below: the
+       book's own sound switch, which the film obeys like everything else, and
+       a browser that declines anyway — in which case the film is muted and
+       played regardless, because a silent ending is better than a still one.
+       ------------------------------------------------------------------- */
+    const Finale = (() => {
+      const host = $("#finale");
+      const film = $("#finaleFilm");
+      const CLIP = "assets/video/aru.mp4";
+      /* the beat between the last sheet leaving and the film starting to move:
+         the reveal lands on a held frame, and then the story moves */
+      const PLAY_DELAY = 350;
+      let ran = false;
+
+      /* back to a closed book: film put away, ready to run again if the reader
+         comes back to the last page */
+      function reset() {
+        ran = false;
+        host.classList.remove("is-playing");
+        try { film.pause(); } catch { /* never started */ }
+        if (film.hasAttribute("src")) { film.removeAttribute("src"); film.load(); }
+      }
+
+      /* Get the film ready while the sheets are still flying in. preload is
+         "none", so nothing has been fetched yet and load() is what starts it;
+         from a rewound start, so a second visit to the page begins at the
+         beginning rather than wherever it was left. */
+      function prepareFilm() {
+        if (film.getAttribute("src") !== CLIP) film.src = CLIP;
+        film.poster = PAGES[PAGES.length - 1].img;
+        try { film.currentTime = 0; } catch { /* not seekable yet */ }
+        film.load();
+        return window.waitForVideoReady(film);
+      }
+
+      /* The screen is paper. Put the film in the picture's place — on its first
+         frame and still paused. Awaited, so the sheets do not begin to leave
+         until there is a decoded frame behind them: what they uncover is the
+         opening of the film, not a blank or a poster.
+
+         It waits rather than plays so that none of the film is spent behind the
+         paper. Two seconds of it would otherwise go by unseen while the sheets
+         hold and drift away, and those are the two seconds it opens with. */
+      function showFilmBehindPaper() {
+        host.classList.add("is-playing");
+        film.muted = PageAudio.muted;      /* the book's sound switch governs it too */
+        try { film.currentTime = 0; } catch { /* not seekable yet */ }
+        return window.waitForVideoReady(film);
+      }
+
+      /* The last sheet has gone and the first frame is sitting there in the
+         open. Hold that beat, then let it move. */
+      function startFilmAfterBeat() {
+        setTimeout(() => {
+          const attempt = film.play();
+          if (attempt && attempt.catch) attempt.catch(() => {
+            /* a browser that will not start sound unasked: play it silently
+               rather than leave the ending as a held frame */
+            film.muted = true;
+            const q = film.play();
+            if (q && q.catch) q.catch(() => { /* the frame stays instead */ });
+          });
+        }, PLAY_DELAY);
+      }
+
+      function run() {
+        if (ran) return;             /* once per visit to the last page */
+        ran = true;
+
+        window.playPaperTransition({
+          prepare: prepareFilm,             /* load it under cover of the flight */
+          covered: showFilmBehindPaper,     /* first frame ready, still paused   */
+          done: startFilmAfterBeat          /* revealed, a beat, then it moves   */
+        });
+
+        film.addEventListener("ended", () => {
+          /* and paper again to give the picture back */
+          window.playPaperTransition({
+            covered: () => { host.classList.remove("is-playing"); }
+          });
+        }, { once: true });
+      }
+
+      return { run, reset };
+    })();
+
+    /* ── the jump menu ────────────────────────────────────────────────────
+       Two ways out of the page you are on: skip, which goes forward now
+       without waiting for the words to be read, and the grid, which goes to
+       any page at all.
+
+       The grid is pictures rather than page numbers, because a child who
+       cannot read a number can still recognise a red bicycle. It is built
+       once from PAGES, so it can never offer a page the book does not have,
+       and the thumbnails are the full illustrations — there is no smaller
+       copy of each — so they are marked lazy and fetched only when the panel
+       is first opened rather than on every page load.
+
+       Both actions deliberately ignore the gate that holds the forward arrow
+       back until a page has been read out: leaving the page you are on is the
+       whole purpose of this menu. Skipping counts as being done with the page,
+       so the arrow is there if the reader comes back to it.
+       ------------------------------------------------------------------- */
+    const JumpMenu = (() => {
+      const btn   = $("#jumpBtn");
+      const panel = $("#jumpPanel");
+      const veil  = $("#jumpVeil");
+      const grid  = $("#jumpGrid");
+      const skip  = $("#jumpSkip");
+      let on = false, built = false;
+
+      function build() {
+        if (built) return;
+        built = true;
+        grid.replaceChildren(...PAGES.map((page, i) => {
+          const li = document.createElement("li");
+          li.className = "jump__item";
+
+          const pick = document.createElement("button");
+          pick.type = "button";
+          pick.className = "jump__pick";
+          /* the page's own words name it, for a screen reader and for a
+             grown-up hunting a particular moment */
+          const words = page.text ? page.text.hi.replace(/<[^>]*>/g, "") : page.alt.hi;
+          pick.setAttribute("aria-label", `पन्ना ${i + 1}: ${words}`);
+          pick.addEventListener("click", () => { close(); Book.jump(i); });
+
+          const im = document.createElement("img");
+          im.src = page.img;
+          im.alt = "";
+          im.loading = "lazy";
+          im.decoding = "async";
+          im.draggable = false;
+          pick.appendChild(im);
+
+          const no = document.createElement("span");
+          no.className = "jump__no";
+          no.textContent = String(i + 1);
+
+          li.append(pick, no);
+          return li;
+        }));
+      }
+
+      /* mark where the reader is, and whether there is anywhere to skip to */
+      function sync() {
+        [...grid.querySelectorAll(".jump__pick")].forEach((p, i) => {
+          if (i === Book.index) p.setAttribute("aria-current", "page");
+          else p.removeAttribute("aria-current");
+        });
+        skip.disabled = Book.index >= Book.total - 1;
+      }
+
+      function open() {
+        if (on) return;
+        on = true;
+        build();
+        sync();
+        panel.hidden = false;
+        veil.hidden = false;
+        /* the class lands a frame later, so the fade has a state to start from */
+        requestAnimationFrame(() => {
+          panel.classList.add("is-open");
+          veil.classList.add("is-open");
+        });
+        btn.setAttribute("aria-expanded", "true");
+        PageAudio.stop();            /* the narration waits rather than talking over this */
+        const here = grid.querySelector('[aria-current="page"]') || grid.querySelector(".jump__pick");
+        if (here) here.focus();
+      }
+
+      function close() {
+        if (!on) return;
+        on = false;
+        panel.classList.remove("is-open");
+        veil.classList.remove("is-open");
+        btn.setAttribute("aria-expanded", "false");
+        /* out of the layout only once the fade is done */
+        setTimeout(() => {
+          if (on) return;            /* reopened in the meantime */
+          panel.hidden = true;
+          veil.hidden = true;
+        }, calm() ? 0 : 300);
+        btn.focus({ preventScroll: true });
+      }
+
+      return {
+        get open() { return on; },
+        toggle() { on ? close() : open(); },
+        close,
+        start() {
+          btn.addEventListener("click", () => JumpMenu.toggle());
+          veil.addEventListener("click", close);
+
+          skip.addEventListener("click", () => {
+            const from = Book.index;
+            close();
+            heard.add(from);         /* they are done with this page by choice */
+            Book.next();
+          });
+
+          /* Escape belongs to the panel while it is open: it must close the
+             panel and nothing else. Play mode listens for Escape on window
+             too, and would otherwise drop the reader out of the story at the
+             same time; the arrow keys would turn pages behind the panel.
+
+             Capture, so this runs first, and stopImmediatePropagation rather
+             than stopPropagation, because plain stopPropagation does not stop
+             another listener on the same node — which is exactly what play
+             mode's is. */
+          window.addEventListener("keydown", (e) => {
+            if (!on) return;
+            if (e.key === "Escape") {
+              e.stopImmediatePropagation();
+              e.preventDefault();
+              close();
+            } else if (e.key.startsWith("Arrow") || e.key === " " ||
+                       e.key === "PageUp" || e.key === "PageDown" ||
+                       e.key === "Home" || e.key === "End") {
+              e.stopImmediatePropagation();   /* Tab still walks the thumbnails */
+            }
+          }, true);
+        }
+      };
+    })();
+
     const HandHint = (() => {
       const el = $("#handHint");
       const WAIT = 4200;                  /* long enough not to nag a reader */
@@ -1214,6 +1739,7 @@
       /* what the reader is waiting to be told to press, if anything */
       function where() {
         if (Book.busy) return null;                       /* mid-turn */
+        if (JumpMenu.open) return null;                   /* choosing a page */
         const cover = document.documentElement.classList.contains("at-cover");
         if (cover && !PlayMode.on) return "start";        /* press Play */
         if (canForward()) return "next";                  /* the gate is open */
@@ -1270,6 +1796,10 @@
       next.setAttribute("aria-label", L.next);
       /* the big Play invitation belongs to the title page only */
       document.documentElement.classList.toggle("at-cover", i === 0);
+      /* the shutters and the film belong to the last page and nowhere else, so
+         stepping off it puts them away and lets the ending run again on a
+         second visit */
+      if (i !== total - 1) Finale.reset();
       /* wherever the hand was pointing may not be the way onward any more */
       HandHint.refresh();
     }
@@ -1423,9 +1953,23 @@
         Book.onReady((i) => {
           heard.add(i);
           if (i === Book.index) sync(Book.index, Book.total);
+          /* the last page finishing is the story finishing: roll the ending */
+          if (i === Book.total - 1) Finale.run();
         });
 
         sync(Book.index, Book.total);
+        JumpMenu.start();
+
+        /* A way to watch the transition on demand: open the page with ?demo
+           and a button appears. It runs the transition over whatever is on
+           screen and changes nothing else, so it is safe to press at any
+           point in the story. The same thing is available from the console
+           at any time as playPaperTransition(). */
+        if (/(\?|&)demo\b/.test(location.search) || /\bdemo\b/.test(location.hash)) {
+          const demo = $("#paperDemo");
+          demo.hidden = false;
+          demo.addEventListener("click", () => window.playPaperTransition());
+        }
         HandHint.start();
         syncSoundLabel();
         syncReadLabel();
