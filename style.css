@@ -41,10 +41,13 @@
      them inside. The idle hand reads the same token, so it cannot drift away
      from the arrow it is pointing at. */
   --nav-inset: calc(-1 * (var(--nav) + var(--nav-gap)));
-  /* vertical room taken by everything that is not the picture: the top bar
-     and the page padding. The words live inside the art and nothing sits
-     below it, so the book is sized to fill whatever height is left. */
-  --vfit: 58px;
+  /* Vertical room taken by everything that is not the picture. That used to be
+     the top bar and the page padding; the bar is hidden now, so it is the
+     padding alone, and this says so instead of carrying the bar's old 58px.
+     The words live inside the art and nothing sits below it, so the book fills
+     whatever height is left. See the note on .is-play for why this must never
+     be smaller than the padding it names. */
+  --vfit: calc(clamp(12px, 2vh, 26px) + clamp(14px, 2.4vh, 26px) + 12px);
 
   /* elevation */
   --sh-book:
@@ -74,7 +77,26 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html { -webkit-text-size-adjust: 100%; }
+html {
+  -webkit-text-size-adjust: 100%;
+
+  /* THE SCROLL LOCK BELONGS HERE, not only on <body>, and this is the whole
+     reason the picture would not stay centred.
+
+     A page scrolls according to the ROOT element, not the body: with
+     overflow:hidden on body alone the scrollbar disappeared — which is why it
+     looked fixed — but the viewport itself was still scrollable, and there were
+     still ~100px of it to scroll, thrown off by decoration that overflows on
+     purpose (the idle hand, the page-turn sheet).
+
+     Measured, before this line: asking the page to scroll 60px moved the
+     picture from 14px below the top to 46px ABOVE it, leaving 74px underneath —
+     the picture sitting high with a wide gap below, exactly as reported. And
+     because a browser RESTORES the scroll position across a reload, the
+     placement changed on refresh and looked random. Nothing to scroll now, so
+     nothing to restore. */
+  overflow: hidden;
+}
 
 body {
   margin: 0;
@@ -86,7 +108,24 @@ body {
     radial-gradient(90% 70% at 92% -6%,  #e6f1f7 0%, rgba(230, 241, 247, 0) 62%),
     radial-gradient(120% 100% at 50% 118%, #f0dfc0 0%, rgba(240, 223, 192, 0) 58%),
     var(--paper);
-  overflow-x: hidden;
+  /* NO SCROLLBAR, on either axis. There is nothing on this page to scroll to:
+     .app is exactly one viewport tall and the picture is sized to fit inside
+     it — measured at 390x844, 820x1180, 1280x400 and 1920x1080, the picture
+     sits wholly within the viewport at every one.
+
+     What was putting a scrollbar there was decoration, and both pieces of it
+     overflow on purpose. The idle hand hangs BELOW the play button's rim
+     (`bottom: calc(... - var(--hand) * .95)`) because a hand drawn over the
+     middle of the button would cover the one thing the button has to say. The
+     page-turn sheet is larger than the frame so its shadow can travel past the
+     edge. Neither takes clicks and neither is content, so neither has any
+     business making the page 74px taller than the window and putting a slider
+     down the side of a picture book.
+
+     overscroll-behavior stops the same thing on a touch screen, where it shows
+     up as the whole book rubber-banding under a finger instead. */
+  overflow: hidden;
+  overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -651,6 +690,43 @@ button { font: inherit; color: inherit; }
   100% { opacity: 0;   transform: scale(1.55); }
 }
 
+/* THE BUTTON'S OWN HEARTBEAT, so the one thing on the title page a child has
+   to press looks alive rather than parked.
+
+   IT IS ON `scale` AND NOT ON `transform`, and it is on the button rather than
+   on the disc, for one reason each. The disc's transform is already spoken for
+   four times over — hover lifts it, focus lifts it, :active presses it down,
+   and .is-pop runs startPop through it — and an animation beats all of those,
+   so a looping transform there would freeze the button's entire response to
+   being touched. `scale` is its own property in modern CSS and multiplies with
+   whatever transform is in force, so the beat and the press compose instead of
+   fighting. Putting it on .startbtn keeps it clear of .is-pop, which sets the
+   `animation` shorthand on the disc and would otherwise wipe the beat out.
+
+   The shape is a swell and a rest, not a throb: it peaks at 14% and is back to
+   rest by 64%, leaving the last third of every cycle still. A button that
+   pulses without pause reads as loading; one that beats and waits reads as
+   waiting for you. The 2.4s period is the ring's, so the disc swells as the
+   halo is thrown off it and the two read as one gesture — and on hover both
+   quicken to 1.4s together.
+
+   Only while it is on screen: the selector matches the same state the button
+   is visible in, so nothing animates behind the story. */
+.at-cover:not(.is-play) .startbtn {
+  animation: startBeat 2.4s ease-in-out infinite;
+}
+.at-cover:not(.is-play) .startbtn:hover { animation-duration: 1.4s; }
+/* under a finger the press is the feedback; the beat gets out of its way */
+.at-cover:not(.is-play) .startbtn:active { animation-play-state: paused; }
+
+@keyframes startBeat {
+  0%        { scale: 1; }
+  14%       { scale: 1.055; }
+  32%       { scale: .996; }
+  48%       { scale: 1.010; }
+  64%, 100% { scale: 1; }
+}
+
 /* the tap burst: one blue ring thrown off the disc on release. Idle it is
    invisible and unanimated — the .is-pop class the script adds runs it. */
 .startbtn__disc::after {
@@ -790,14 +866,39 @@ button { font: inherit; color: inherit; }
 }
 
 .is-play {
-  /* nothing above the book any more, so almost the whole height is picture */
-  --vfit: 58px;
+  /* NOTHING ABOVE THE BOOK ANY MORE, so the only height the picture has to
+     give up is the page's own padding — and this now says exactly that rather
+     than guessing at it. It was a flat 58px, left over from when a top bar sat
+     up there; the padding below comes to about 26px, so a third of the window's
+     spare height was being held back for a bar that is not there. The picture
+     was 95% of the window height and is now as tall as the space allows.
+
+     It must not go below the padding. --vfit is what the picture's height is
+     subtracted from, and the stage it sits in is the window minus that same
+     padding: equal to it, the picture fills the stage exactly; less than it,
+     the picture is taller than its container and the page clips it. */
+  /* +12px of headroom, and it is not arbitrary: 100svh measures a few px
+     larger than the height the stage actually gets (6.5px here), so "exactly
+     the padding" makes the picture taller than its container and the bottom of
+     it is clipped — measured at -0px of margin before this was added. */
+  --vfit: calc(2 * clamp(8px, 1.4vh, 16px) + 12px);
   --nav: clamp(52px, 4.4vw, 68px);
   --nav-gap: clamp(8px, 1vw, 18px);
 }
 .is-play .app { padding: clamp(8px, 1.4vh, 16px) clamp(8px, 1.2vw, 18px); }
 .is-play .book { width: min(100%, calc((100svh - var(--vfit)) * 16 / 9)); }
-.is-play .book__mat { box-shadow: 0 30px 70px -30px rgba(40, 26, 14, .6); }
+/* The lift under the picture, and it is 0 10px rather than 0 30px because
+   the old one put 35px of shadow below the card and nothing at all above it.
+   The card is centred to the pixel; the shadow was not, and shadow is what the
+   eye reads — it made the picture look as though it were sitting high. Worse,
+   the page clips its own overflow now, so 21px of that shadow was being cut off
+   with a hard edge, which is what turned the gap below into a visible band.
+
+   Reach below is offset + spread + blur/2 = 8 - 16 + 15 = 7px. The margin the
+   picture leaves is 11px at the shortest window worth supporting, so 7 leaves
+   room to spare at every size — 11px reached exactly 11px, which is a fit only
+   until the next rounding. Still lifted, no longer bottom-heavy. */
+.is-play .book__mat { box-shadow: 0 8px 30px -16px rgba(40, 26, 14, .55); }
 
 /* the page itself warms a touch so the lit picture carries the screen */
 .is-play body { background-color: var(--paper-warm); }
@@ -850,6 +951,14 @@ button { font: inherit; color: inherit; }
        offset = 0.5 - centre  ->  (-0.1281, -0.0466)
    ------------------------------------------------------------------------ */
 .navbtn {
+  /* Hidden: the book turns its own pages now — every page moves on by itself
+     once it has said its piece (see the auto-turn in script.js §UI). The
+     markup and all the script's wiring stay exactly as they were, so the
+     keyboard arrows and a swipe still work for anyone who wants them, and
+     the hamburger menu is still the way to reach a particular page.
+     Bring the arrows back by deleting this one declaration. */
+  display: none;
+
   position: absolute;
   top: 50%;
   translate: 0 -50%;
@@ -1047,7 +1156,10 @@ button { font: inherit; color: inherit; }
   margin: auto;
   width: min(96vw, 920px); max-height: min(86svh, 760px);
   overflow-y: auto; overscroll-behavior: contain;
-  padding: clamp(14px, 2.2vw, 26px);
+  /* one source for the inset, so the sticky foot below can bleed out to
+     the panel edges by exactly as much as this pushes in */
+  --jump-pad: clamp(14px, 2.2vw, 26px);
+  padding: var(--jump-pad);
   border-radius: clamp(18px, 2vw, 28px);
   background: linear-gradient(168deg, #fffdf6, #f6ecd8);
   box-shadow: 0 30px 70px -24px rgba(40, 26, 14, .6);
@@ -1085,6 +1197,52 @@ button { font: inherit; color: inherit; }
   border-top: 2.4px solid currentColor; border-right: 2.4px solid currentColor;
   transform: rotate(45deg);
 }
+
+
+/* The way into the game. Deliberately not the terracotta of "आगे बढ़ो": that
+   one moves you along inside the story and this one leaves it, so it reads as a
+   different kind of thing. Teal, and set apart from the pictures by a rule. */
+/* THE FOOT OF THE PANEL, and the reason it is sticky rather than simply last.
+   With thirteen pictures in the grid the panel scrolls on a short window —
+   measured at 1262x624: 755px of content in a 537px box — and a button sitting
+   after the grid was 185px below the fold. A way out of the story that has to
+   be scrolled for is not a way out a child will find, so it stays on screen
+   whatever the grid is doing.
+
+   The negative margins undo the panel's own padding so the band reaches the
+   panel's edges, and `bottom` cancels the padding again so it sits flush on
+   them. The gradient is there because the tiles scroll underneath it. */
+.jump__foot {
+  position: sticky;
+  bottom: calc(-1 * var(--jump-pad));
+  margin: clamp(14px, 1.8vw, 20px) calc(-1 * var(--jump-pad)) calc(-1 * var(--jump-pad));
+  padding: clamp(9px, 1.2vw, 13px) var(--jump-pad) var(--jump-pad);
+  background: linear-gradient(to top, #f6ecd8 58%, rgba(246, 236, 216, 0));
+  border-top: 1px solid var(--ink-faint);
+}
+
+.jump__game {
+  display: inline-flex; align-items: center; gap: 10px;
+  margin: 0;
+  padding: .55em 1.15em;
+  border: 0; border-radius: 999px;
+  background: var(--teal); color: #fff;
+  font-size: clamp(.95rem, 1.9vw, 1.15rem); font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 20px -10px rgba(45, 104, 101, .9);
+  transition: transform .2s var(--turn-ease), background-color .2s ease, opacity .2s ease;
+}
+.jump__game:hover  { background: #32726e; }
+.jump__game:active { transform: scale(.96); }
+.jump__game:disabled { opacity: .4; cursor: default; box-shadow: none; }
+
+/* a single chevron: one step, out of here */
+.jump__game-ico {
+  width: 8px; height: 8px; flex: none;
+  border-top: 2.4px solid currentColor; border-right: 2.4px solid currentColor;
+  transform: rotate(45deg);
+}
+
 
 .jump__grid {
   display: grid; gap: clamp(8px, 1.4vw, 16px);
@@ -1207,6 +1365,67 @@ button { font: inherit; color: inherit; }
 }
 .paperdemo:active { transform: scale(.96); }
 
+/* ── 7d. The sound-effect bursts ─────────────────────────────────────────────
+   Comic lettering thrown onto the picture as the recording makes the sound.
+   The entrance, the hold and the exit are one Web Animations keyframe set in
+   script.js, because the hold has to last as long as the sound and only the
+   cue table knows how long that is.
+
+   z-index 6, the same as .frame__vignette and after it in the markup, so a
+   burst sits over the picture without the vignette dimming it — while the
+   page-turn sheet (7) still sweeps over the top of it.
+
+   Sized in cqw, so a burst keeps its share of the picture from phone to
+   desktop. --px/--py place its centre and --pw sets its width, all plain
+   numbers, all written by PopArt.
+   ------------------------------------------------------------------------- */
+.popart {
+  position: absolute; inset: 0; z-index: 6;
+  pointer-events: none;              /* never in the way of a tap */
+}
+
+.popart__item {
+  position: absolute;
+  left: calc(var(--px, 50) * 1%);
+  top:  calc(var(--py, 50) * 1%);
+  width: calc(var(--pw, 26) * 1cqw);
+  height: auto;
+  /* the resting transform; every keyframe repeats the centring translate */
+  transform: translate(-50%, -50%) scale(.3);
+  opacity: 0;
+  will-change: transform, opacity;
+  /* lifts the burst off the painting so it reads as laid on top of it */
+  filter: drop-shadow(0 .45cqw .8cqw rgba(38, 22, 8, .3));
+  user-select: none; -webkit-user-drag: none;
+}
+
+
+/* The motion strokes share this layer. A stroke is a thin bar with its colour
+   fading out at both ends, so it reads as tapered without needing an SVG; the
+   rotation, the travel and the fade are all one transform and one opacity in
+   script.js, which keeps them on the compositor.
+
+   transform-origin is the top-left on purpose. The transform reads
+   `rotate() translate(-50%,-50%) translate(travel)`, which is applied
+   right-to-left: the stroke is nudged along its own length, then centred on
+   the point at --mx/--my, and only then rotated about that point. Any other
+   origin and a rotated stroke drifts off the place it was aimed at. */
+.mline {
+  position: absolute;
+  left: calc(var(--mx, 50) * 1%);
+  top:  calc(var(--my, 50) * 1%);
+  width:  calc(var(--ml, 9) * 1cqw);
+  height: calc(var(--mt, .26) * 1cqw);
+  min-height: 1px;
+  border-radius: 999px;
+  background: linear-gradient(90deg,
+              transparent 0%, var(--mc) 34%, var(--mc) 66%, transparent 100%);
+  transform-origin: 0 0;
+  opacity: 0;
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+
 /* ── 8. Responsive ───────────────────────────────────────────────────────── */
 
 /* tablet — the artwork gives up a little size, the buttons stay outside it */
@@ -1310,9 +1529,11 @@ button { font: inherit; color: inherit; }
   :root { --turn-ms: 260ms; }
 
   :where(.track, .swing, .puff, .slot__art, .frame__loader i,
-         .cover__hero, .cover__title, .startbtn__ring) {
+         .cover__hero, .cover__title, .startbtn__ring, .startbtn) {
     animation: none !important;
   }
+  /* and the beat leaves no scale behind it when it stops */
+  .startbtn { scale: 1; }
   .cover__flash { display: none; }
   .spark { animation-duration: 7s !important; }
   .layer--dust { display: none; }

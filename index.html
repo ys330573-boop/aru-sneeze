@@ -1,12 +1,25 @@
 <!DOCTYPE html>
 <!-- class="at-cover" so the home page paints correctly before the script runs -->
-<html lang="hi" class="at-cover">
+<html lang="hi" translate="no" class="at-cover">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#f8efdd" />
 <meta name="description" content="आरु की छींक — एक इंटरैक्टिव चित्र-कथा। An interactive animated picture book for children." />
 <title>आरु की छींक · Aaru's Sneeze</title>
+
+<!-- NO TRANSLATION OFFERED. The page says lang="hi", which is what makes Chrome
+     put its "Hindi / English" bar over the top of the artwork. The attribute is
+     right and stays — it is what picks the Devanagari font and what a screen
+     reader needs — so the bar is turned off instead.
+
+     Both of these are needed: `translate="no"` on <html> is the standard
+     attribute and marks the content as not-for-translation, and this meta is
+     the Google-specific one that actually stops the bar from appearing. And
+     there is nothing here to translate anyway: every word a reader sees is
+     painted into the pictures, so a translation would rewrite the buttons and
+     leave the story in Hindi. -->
+<meta name="google" content="notranslate" />
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -16,7 +29,7 @@
 
 <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml" />
 <!-- bump ?v= after editing so a plain refresh never serves a cached copy -->
-<link rel="stylesheet" href="style.css?v=52" />
+<link rel="stylesheet" href="style.css?v=65" />
 <!-- the picture the book opens on, so it is on screen as early as possible -->
 <link rel="preload" as="image" href="assets/images/page-01.jpg" />
 </head>
@@ -156,6 +169,10 @@
             </div>
 
             <div class="frame__vignette" aria-hidden="true"></div>
+
+            <!-- the story's own sound effects, popped onto the picture at the
+                 moment the recording says them -->
+            <div class="popart" id="popart" aria-hidden="true"></div>
             <div class="frame__sheet" id="turnSheet" aria-hidden="true"></div>
             <div class="frame__loader" id="loader" aria-hidden="true"><i></i><i></i><i></i></div>
             <!-- The ending: the film, revealed by the paper transition. Inside the
@@ -221,6 +238,21 @@
     </button>
 
     <ul class="jump__grid" id="jumpGrid"></ul>
+
+    <!-- The way into the game, for a child who does not want to read to the end
+         of the story first. The film hands over by itself when it finishes
+         (see Finale.openGame); this is the same door, opened early.
+
+         It is below the pictures, not beside "आगे बढ़ो" at the top, because it
+         is the one thing in this panel that leaves the story rather than moving
+         about inside it — and it should not be the first thing a thumb finds. -->
+    <div class="jump__foot">
+      <button class="jump__game" id="jumpGame" type="button"
+              aria-label="कहानी छोड़कर खेल शुरू करो">
+        <span class="jump__game-ico" aria-hidden="true"></span>
+        खेल खेलो
+      </button>
+    </div>
   </nav>
 
 
@@ -239,6 +271,6 @@
   </button>
   <div class="sr-only" id="liveHint" aria-live="polite"></div>
 
-  <script src="script.js?v=46" defer></script>
+  <script src="script.js?v=79" defer></script>
 </body>
 </html>

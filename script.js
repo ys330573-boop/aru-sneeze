@@ -365,6 +365,12 @@
 
         if (calm()) { host.classList.add("is-settled"); return Promise.resolve(); }
 
+        /* The cover is the one page with no recording to hang a cue off, so
+           its two sounds are timed off this entrance instead: air moving as
+           Aaru rides in, and a small chime as the title lands. */
+        Beats.sfx("whoosh");
+        setTimeout(() => Beats.sfx("chime"), TITLE_AT + 150);
+
         const runs = [];
 
         runs.push(hero.animate([
@@ -442,11 +448,33 @@
     const MUTE = "aaru.sound";
     /* ?v= bumps whenever the clips are re-cut — the filenames stay the same,
        so without it a refresh would quietly serve the previous audio */
-    const CUT = 5;
+    const CUT = 9;
     const clip = (n) => `assets/audio/page-${String(n).padStart(2, "0")}.mp3?v=${CUT}`;
 
-    let on    = localStorage.getItem(KEY)  !== "off";   /* narration on by default */
-    let muted = localStorage.getItem(MUTE) === "off";
+    /* Both switches these keys remember — #readBtn and #soundBtn — sit inside
+       .topbar, and the bar is display:none (style.css §3). So a stored "off"
+       is a one-way door: the book falls silent and nothing left on screen can
+       give it its voice back. Whichever of the two was set, the symptom is the
+       same — a story that never speaks again, on that browser, forever.
+
+       While the bar is out of reach the stored answer is therefore ignored and
+       forgotten, and the book always opens able to speak. Bring the bar back
+       and the buttons are trusted again, because then there is a way to undo
+       them. */
+    const reachable = () => {
+      const bar = document.querySelector(".topbar");
+      return !!bar && getComputedStyle(bar).display !== "none";
+    };
+
+    let on, muted;
+    if (reachable()) {
+      on    = localStorage.getItem(KEY)  !== "off";   /* narration on by default */
+      muted = localStorage.getItem(MUTE) === "off";
+    } else {
+      on = true; muted = false;
+      /* clear them, or restoring the bar would resurrect the old silence */
+      try { localStorage.removeItem(KEY); localStorage.removeItem(MUTE); } catch { /* private mode */ }
+    }
 
     let el = null;              /* the single audio element — never a second */
     let token = 0;              /* invalidates anything still in flight */
@@ -537,7 +565,7 @@
          for. */
       get hasClip() { return hasText && !!pageNo; },
 
-      /* the live element, so PopArt can follow the playhead. Read only —
+      /* the live element, so Beats can follow the playhead. Read only —
          nothing outside this module ever drives playback. */
       get media() { return el; },
 
@@ -593,6 +621,28 @@
     const AC = window.AudioContext || window.webkitAudioContext;
     let ctx = null;
 
+    /* THE BUTTON'S SOUND IS A RECORDING NOW, and it is primed the moment this
+       module exists rather than fetched when the button is pressed. The whole
+       job of this sound is to answer a finger the instant it lands; a first
+       press that has to go to the network first does not do that. It is 2KB.
+
+       Levelled to peak at -9.7 dBFS, which is where the synthesised pop it
+       replaces peaked (0.34 of full scale = -9.4) — so the button sounds
+       different but not suddenly louder or quieter than before. */
+    const FILE = "assets/sfx/play.mp3?v=1";
+    let el = null;
+
+    function element() {
+      if (el) return el;
+      try {
+        el = new Audio(FILE);
+        el.preload = "auto";
+        el.load();
+      } catch { el = null; }
+      return el;
+    }
+    element();
+
     function context() {
       if (!AC) return null;
       if (!ctx) { try { ctx = new AC(); } catch { return null; } }
@@ -619,14 +669,803 @@
     }
 
     return {
+      /* shared so the book only ever builds one audio context: Beats's
+         sound effects are synthesised in this same one. */
+      get ctx() { return context(); },
+
       play() {
         if (PageAudio.muted) return;
-        const c = context();
-        if (!c) return;                       /* no Web Audio: stay silent */
-        const t = c.currentTime + 0.001;
-        /* body of the pop, then a quieter click on top for the "cork" edge */
-        voice(c, t, { type: "sine",     from: 900,  to: 230,  peak: 0.34, len: 0.14 });
-        voice(c, t, { type: "triangle", from: 1900, to: 1100, peak: 0.08, len: 0.05 });
+
+        /* The supplied recording, and the two oscillators below it as the
+           fallback — the button must answer a press even if the file will not
+           load, because it is the proof to a child that the book makes sounds
+           at all.
+
+           Rewound rather than replaced on each press: the clip is 0.15s and a
+           second press inside that should cut the first off, which is what a
+           button being pressed twice actually sounds like. */
+        const a = element();
+        if (a) {
+          try { a.currentTime = 0; } catch { /* not seekable yet */ }
+          const p = a.play();
+          if (p && p.catch) p.catch(voices);
+          return;
+        }
+        voices();
+      }
+    };
+
+    /* the cork-pop that was here before the recording, kept whole */
+    function voices() {
+      const c = context();
+      if (!c) return;                         /* no Web Audio: stay silent */
+      const t = c.currentTime + 0.001;
+      /* body of the pop, then a quieter click on top for the "cork" edge */
+      voice(c, t, { type: "sine",     from: 900,  to: 230,  peak: 0.34, len: 0.14 });
+      voice(c, t, { type: "triangle", from: 1900, to: 1100, peak: 0.08, len: 0.05 });
+    }
+  })();
+
+  /* ── Beats ──────────────────────────────────────────────────────────────
+     The small things that happen at a particular moment of a page: a comic
+     burst of lettering, a few motion lines, a sound effect. One cue table,
+     one clock, three ways of answering it.
+
+     Every timing here is measured off the recording rather than guessed. Each
+     clip was cut into speech runs at its silences and every run measured for
+     length and peak level, then matched against the words painted into that
+     page's artwork — the artwork being the authority on what is said, not
+     PAGES[].text, which predates the current pictures.
+
+     Three of the cues were checked against something independent, as a test
+     of the method: page 5's bell block begins at 8.95s and the ting was
+     appended to that clip at 8.91s; page 9's टप्प is a 0.15s spike that is
+     the second-loudest moment in its clip; page 11's धड़ाम is the loudest.
+     All three landed where the measurement said they would.
+
+     A cue is a moment plus what happens at it, any combination of:
+
+       art   a burst of comic lettering — out/x/y/w give its life and place
+       lines a few motion strokes — see Lines.draw for the shape of it
+       sfx   one of the synthesised sounds in Sfx
+
+     Pages 7, 8 and 11 carry sound effects mixed into the recording itself, so
+     they are not given a second one here at the same moment. Nothing is added
+     to a page that has no action in it.
+
+     To retime anything, change `at`. To move a burst or a set of lines,
+     change x/y. Nothing else here needs touching. */
+  const Beats = (() => {
+    const ART = "assets/pop/";
+
+    /* Fired this much early so a burst or a stroke is at full strength *on*
+       the sound rather than only starting to grow there. */
+    const LEAD     = 0.12;
+    const POP_IN   = 380;   /* ms — a burst overshoots, then settles */
+    const POP_OUT  = 300;   /* ms — and shrinks away */
+    const MIN_HOLD = 0.85;  /* s  — a short sound still has to be readable */
+
+    /* ── the sounds ───────────────────────────────────────────────────────
+       Synthesised rather than shipped, for the same reason the play button's
+       pop is: a few oscillators weigh nothing, need no network, and can be
+       tuned by ear in one place. They share Pop's audio context, so the book
+       only ever builds one.
+
+       They are all deliberately quiet. The narration sits around -15 dBFS and
+       nothing here is allowed to compete with it: `peak` values are small on
+       purpose, and every sound is short enough to sit inside a gap between
+       words rather than over one. */
+    const Sfx = (() => {
+      let noiseBuf = null;
+
+      /* one short band of noise — wind, cloth, water, scrape */
+      function noise(c, at, { dur, hz, q, peak, to }) {
+        if (!noiseBuf) {
+          noiseBuf = c.createBuffer(1, Math.ceil(c.sampleRate * 1.5), c.sampleRate);
+          const d = noiseBuf.getChannelData(0);
+          for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        }
+        const src = c.createBufferSource();
+        src.buffer = noiseBuf;
+        src.loop = true;
+
+        const bp = c.createBiquadFilter();
+        bp.type = "bandpass";
+        bp.frequency.setValueAtTime(hz, at);
+        if (to) bp.frequency.exponentialRampToValueAtTime(to, at + dur);
+        bp.Q.value = q == null ? 1.1 : q;
+
+        const g = c.createGain();
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.exponentialRampToValueAtTime(peak, at + dur * 0.28);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+
+        src.connect(bp); bp.connect(g); g.connect(c.destination);
+        src.start(at);
+        src.stop(at + dur + 0.03);
+        src.onended = () => { try { src.disconnect(); bp.disconnect(); g.disconnect(); } catch { /* gone */ } };
+      }
+
+      /* one pitched voice — a thud, a clink, a chime */
+      function tone(c, at, { type, from, to, peak, dur }) {
+        const g = c.createGain();
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.exponentialRampToValueAtTime(peak, at + 0.006);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+        g.connect(c.destination);
+
+        const o = c.createOscillator();
+        o.type = type || "sine";
+        o.frequency.setValueAtTime(from, at);
+        if (to) o.frequency.exponentialRampToValueAtTime(to, at + dur * 0.85);
+        o.connect(g);
+        o.start(at);
+        o.stop(at + dur + 0.02);
+        o.onended = () => { try { o.disconnect(); g.disconnect(); } catch { /* gone */ } };
+      }
+
+      /* Each entry is one sound. Kept as recipes rather than files so the
+         whole set can be read, compared and adjusted together. */
+      const KIT = {
+        /* air moving past something — a bicycle setting off, a body flying */
+        whoosh: (c, t) => noise(c, t, { dur: 0.30, hz: 620,  to: 1500, q: 0.9,  peak: 0.055 }),
+        /* flour leaving a plate: air with nothing solid in it */
+        puff:   (c, t) => noise(c, t, { dur: 0.42, hz: 900,  to: 380,  q: 0.6,  peak: 0.034 }),
+        /* paper: the page itself turning */
+        page:   (c, t) => noise(c, t, { dur: 0.22, hz: 2600, to: 1500, q: 0.5,  peak: 0.030 }),
+        /* something small landing — a samosa on the ground */
+        plop:   (c, t) => { tone(c, t, { from: 470, to: 150, peak: 0.075, dur: 0.11 });
+                            noise(c, t, { dur: 0.07, hz: 900, q: 0.9, peak: 0.020 }); },
+        /* a small good thing noticed: a locket, a mother home */
+        chime:  (c, t) => { tone(c, t, { from: 1046, peak: 0.048, dur: 0.44 });
+                            tone(c, t + 0.055, { from: 1568, peak: 0.026, dur: 0.38 }); }
+      };
+
+      /* ── the recorded ones ──────────────────────────────────────────────
+         Six of these cues are real recordings rather than the oscillators
+         above, and where a recording exists it is what plays. Three of the six
+         — page, plop and chime — keep their synthesised voice underneath as a
+         fallback for a file that will not load. The other three do not, and
+         deliberately: a stomach, a bicycle going over and a dog eating are
+         none of them things an oscillator can stand in for, so if those files
+         are missing the right outcome is silence rather than a noise pretending
+         to be them.
+
+         The reason is the verdict already on the record in the game half of
+         this project, about its own synthesised cues: they "sound like a
+         machine and had no effect on real emotions of kids, as they are our
+         target audience". A synthesised growl is a filtered noise band; a
+         stomach is a stomach. There is no filter arrangement that crosses
+         that gap.
+
+         Seven came from the recordings the game held in assets/_source/sfx/
+         — every one CC0 or public domain, attribution not required. THAT FOLDER
+         HAS SINCE BEEN DELETED, and with it PROVENANCE.json: these seven cut
+         files are all that survives of it, so do not delete them expecting to
+         re-cut them. The other three are cut from the sound files supplied
+         directly for this book, still in the project root.
+
+         Nothing was downloaded for any of this and no sound is duplicated:
+         they are cut down, faded, made mono and levelled, and the whole set is
+         236KB.
+
+             growl  tummy-growl   his stomach, on the page he gets hungry
+             crash  bike-wreck    धड़ाम — the bicycle going over with him on it
+             plop   wood-drop     टप्प — the samosa hitting the ground
+             munch  dog-munch     the dog making off with it
+             chime  bell-tree     the locket: found, held up, laughed about
+             page   your flip     the page turn itself: a rustle that builds
+                                  to the flick of the paper at 700ms
+             cycle  bike-ride     wheels on road, under the whole of page 5
+             settle your utensils metal going quiet: the bicycle down (p7), the
+                                  pots starting to slide (p11), one lifted (p12)
+             whump  your body-fall the boy hitting the road after the bicycle, p6
+             birds  your birds    the courtyard, under the whole of page 2
+             plate  your plate    the plate coming down, at the end of p3
+             open   your box      the tin lid coming off, p4
+             steps  your page 09  footsteps, under the walk home on page 10
+
+         WHAT STAYED SYNTHESISED, and why it is not an oversight. `breeze`,
+         `whoosh` and `puff` are air, which is what filtered noise actually
+         is — there is nothing for a recording to add. `clink` is steel, and
+         the library has no steel: the game left one of its own cards silent
+         over exactly that, on the reasoning that wood standing in for metal
+         is a worse error than a gap. */
+      /* ?v= for the same reason the narration has one: these filenames stay the
+         same when the sound behind one is replaced, and a browser will happily
+         keep serving the old bytes with no error and no way to tell. Bump it
+         whenever a file in assets/sfx/ is re-cut. */
+      const CUT = 3;
+      const at_ = (f) => "assets/sfx/" + f + ".mp3?v=" + CUT;
+      const FILES = {
+        growl:  at_("growl"),
+        crash:  at_("crash"),
+        plop:   at_("plop"),
+        munch:  at_("munch"),
+        chime:  at_("chime"),
+        page:   at_("page"),
+        cycle:  at_("cycle"),
+        settle: at_("settle"),
+        whump:  at_("whump"),
+        birds:  at_("birds"),
+        plate:  at_("plate"),
+        open:   at_("open"),
+        steps:  at_("steps")
+      };
+
+      /* PLAYED THROUGH <audio> AND NOT THROUGH WEB AUDIO, which is the whole
+         reason this works. Web Audio can only play a file it has decoded, and
+         decoding means fetch() — which a browser refuses for a local file. This
+         book is opened straight off the filesystem, so every one of these
+         recordings fell silently back to its oscillator when it was written
+         that way: measured, six files, nought decoded.
+
+         An <audio> element has no such problem, and it reads the same clocks
+         the narration does — so the levels baked into these files (-26 to -32
+         LUFS against narration averaging -15.5) are directly comparable to her
+         voice rather than to a gain I would otherwise have had to guess at. */
+      const pool = new Map();
+      let warmed = false;
+
+      function element(name) {
+        let el = pool.get(name);
+        if (!el) {
+          el = new Audio();
+          el.preload = "auto";
+          el.src = FILES[name];
+          pool.set(name, el);
+        }
+        return el;
+      }
+
+      /* asked for on every page change: 108KB for all six, fetched once and
+         then served out of cache, so no cue ever waits on the wire */
+      function warm() {
+        if (warmed) return;
+        warmed = true;
+        for (const name of Object.keys(FILES)) element(name).load();
+      }
+
+      /* Everything still sounding, so a page can take its sounds with it.
+         Mostly these are half-second accents that finish long before anything
+         changes, and this would not matter — but `cycle` runs 8.2s and `munch`
+         1.9s, and a reader who turns while the dog is still eating should not
+         be followed onto the next page by it. */
+      const live = new Set();
+
+      function hush() {
+        for (const el of live) { try { el.pause(); } catch { /* already gone */ } }
+        live.clear();
+      }
+
+      function shot(name) {
+        /* A fresh element per play rather than rewinding the one that was
+           primed: the page turn is the cue that repeats, and a reader going
+           quickly would otherwise cut each turn off with the next. The file is
+           in cache by then, and a detached element is collected once it has
+           finished playing. */
+        const el = new Audio(FILES[name]);
+        el.muted = PageAudio.muted;
+
+        /* THE PAGE TURN IS THE ONE CUE TIED TO AN ANIMATION'S LENGTH, and the
+           supplied recording is a rustle that builds to the flick of the paper
+           at 700ms. That is 80ms before a 780ms turn settles, which is why it
+           sits so well — but --turn-ms is 260ms under prefers-reduced-motion,
+           and there the flick would land nearly half a second after the page
+           had already arrived. So for a reader who has asked for less motion,
+           the rustle is skipped and the sound starts just before its own
+           flick, which puts the flick inside the shorter turn instead. */
+        if (name === "page" && calm()) {
+          try { el.currentTime = 0.52; } catch { /* not seekable yet */ }
+        }
+        /* a touch of pitch either way, so the same file heard twice in one
+           reading is not heard as the same file twice */
+        el.playbackRate = 1 + (Math.random() * 2 - 1) * 0.035;
+        /* The turn's own sound is deliberately NOT tracked. hush() runs from
+           bind(), which happens as the arriving page is wired up — which is
+           roughly when the turn animation ends and the paper is still settling.
+           Tracking it would mean every turn cut its own sound off. It belongs
+           to the turn rather than to either page, so it is left to finish. */
+        if (name !== "page") {
+          live.add(el);
+          el.addEventListener("ended", () => live.delete(el), { once: true });
+        }
+        const p = el.play();
+        if (p && p.catch) p.catch(() => { live.delete(el); /* refused before a gesture */ });
+      }
+
+      return {
+        warm, hush,
+
+        play(name) {
+          if (PageAudio.muted) return;
+
+          if (FILES[name]) { shot(name); return; }
+
+          const make = KIT[name];
+          if (!make) return;
+          const c = Pop.ctx;
+          if (!c) return;                    /* no Web Audio: stay silent */
+          try { make(c, c.currentTime + 0.001); } catch { /* nothing to do */ }
+        }
+      };
+    })();
+
+    /* ── the motion lines ─────────────────────────────────────────────────
+       A stroke is a thin tapered streak that fades in as it travels a little
+       way along its own direction, then fades out. Two or three of them,
+       staggered, read as movement without becoming the thing you look at.
+
+         x, y    where the group is centred, as a % of the picture
+         dir     the direction of travel, in degrees; 0 is to the right
+         n       how many strokes
+         len     stroke length, as a % of the picture width
+         thick   stroke thickness, same units
+         spread  the gap between strokes, measured across the direction
+         burst   fan the strokes out of one point instead of running them
+                 parallel — for an impact
+         arc     how wide that fan is, in degrees
+         tone    "dark" on a light scene, "light" on a dark one
+         life    ms for one stroke
+
+       Positions are worked out here rather than in CSS because the spread is
+       across the direction of travel, which CSS has no way to express. The
+       animation itself is one transform and one opacity, so it stays on the
+       compositor.
+
+       Nothing is drawn when the reader has asked for reduced motion: these
+       are decoration and nothing is lost by leaving them out. */
+    const Lines = (() => {
+      const ASPECT = 16 / 9;    /* the picture's shape: 1% of width in height */
+
+      return {
+        draw(host, o) {
+          if (!host || calm()) return;
+
+          const n      = o.n      || 3;
+          const dir    = o.dir    || 0;
+          const len    = o.len    || 9;
+          const thick  = o.thick  || 0.26;
+          const spread = o.spread == null ? 2.2 : o.spread;
+          const life   = o.life   || 620;
+          const gap    = o.gap    == null ? 70 : o.gap;
+          const arc    = o.arc    || 84;
+          const colour = o.tone === "light"
+            ? "rgba(255, 252, 244, .82)"
+            : "rgba(58, 40, 22, .5)";
+
+          for (let i = 0; i < n; i++) {
+            /* where this stroke sits, and which way it points */
+            const mid = (i - (n - 1) / 2);
+            let ang = dir, ax = o.x, ay = o.y;
+
+            if (o.burst) {
+              /* fanned out of the point, each stroke pushed clear of it */
+              ang = dir + (n > 1 ? mid * (arc / (n - 1)) : 0);
+              const r = ang * Math.PI / 180;
+              const reach = len * 0.62;
+              ax = o.x + Math.cos(r) * reach;
+              ay = o.y + Math.sin(r) * reach * ASPECT;
+            } else {
+              /* parallel, offset across the direction of travel */
+              const r = dir * Math.PI / 180;
+              ax = o.x + -Math.sin(r) * mid * spread;
+              ay = o.y + Math.cos(r) * mid * spread * ASPECT;
+            }
+
+            const el = document.createElement("i");
+            el.className = "mline";
+            el.style.setProperty("--mx", ax);
+            el.style.setProperty("--my", ay);
+            el.style.setProperty("--ml", len * (o.burst ? 0.78 : 1));
+            el.style.setProperty("--mt", thick);
+            el.style.setProperty("--mc", colour);
+            host.appendChild(el);
+
+            const T = (travel, sx) =>
+              `rotate(${ang}deg) translate(-50%, -50%) translate(${travel}%, 0) scaleX(${sx})`;
+
+            const a = el.animate(
+              o.burst
+                ? [{ transform: T(-26, 0.55), opacity: 0 },
+                   { transform: T(-4, 1),     opacity: 1, offset: 0.4 },
+                   { transform: T(16, 0.9),   opacity: 0 }]
+                : [{ transform: T(-34, 0.7),  opacity: 0 },
+                   { transform: T(0, 1),      opacity: 1, offset: 0.36 },
+                   { transform: T(32, 0.92),  opacity: 0 }],
+              { duration: life, delay: i * gap, easing: "cubic-bezier(.4,0,.35,1)", fill: "both" }
+            );
+            const gone = () => el.remove();
+            a.finished.then(gone, gone);
+          }
+        }
+      };
+    })();
+
+    /* ── the cue table ────────────────────────────────────────────────────
+       Scene by scene: what happens, what motion belongs to it, what it
+       sounds like, and when.
+
+       Page 1, the cover, is not here — it has no recording to hang a time
+       off. Its two sounds are triggered by the entrance itself, in Cover.play.
+
+       THE SNEEZE, on all five pages it happens on. It is the event the book is
+       named after and it was the one thing never drawn: the lettering already
+       existed in assets/pop/sneeze.webp and nothing played it.
+
+       Each is placed on the boy's face, measured off each painting rather than
+       repeated, because he stands somewhere different on every one — page 3
+       centre-left, page 6 in the air, page 9 over by the stall. Each sits a
+       little ABOVE the face centre so the burst takes his hair and forehead and
+       the scrunched-up mouth still reads under it; dead-centred on the face it
+       covers the best drawing on the page.
+
+       And each fires on the BURST rather than on the halting "आ… आ…" that leads
+       into it, and lives 1000ms — long enough to land, short enough to stay a
+       sneeze rather than becoming a caption. */
+    const CUES = {
+      /* 2 · an empty courtyard, Aaru alone on the step. Nothing moves, so
+         the only thing to give it is the air. */
+      2: [{ at: 0.30, sfx: "birds",
+            lines: { x: 24, y: 20, dir: 4, n: 2, len: 15, thick: 0.2, spread: 3.4, life: 1500, gap: 320 } },
+          { at: 4.50, sfx: "growl" }],
+
+      /* 3 · the sneeze that empties the plate. The burst of lines comes off
+         his face on the "छीं", and the flour leaves on "उड़ गया".
+
+         THREE THINGS IN ORDER, which is what the picture draws: he sneezes
+         (9.30), the flour disperses on her word for it (10.10), and the plate
+         — which the painting still has in mid-air, spinning — comes down last.
+
+         THE PLATE IS AT THE END OF THE PAGE and not with the sneeze, which is
+         where it first went. The picture is the argument: the plate has not
+         landed yet in it, so the clatter is it arriving rather than it
+         leaving. 13.60 is 0.15s after her last word ends at 13.45 — a clean
+         beat, not a collision — and the 0.95s of it finishes at 14.55, which
+         is inside the 1.2s this page holds for after its clip before turning
+         itself. So it is heard whole, and nothing cuts it off. */
+      3: [{ at: 9.30, art: "sneeze", life: 1000, x: 41, y: 34, w: 20,
+            lines: { x: 44, y: 40, dir: -142, n: 4, len: 7.5, burst: true, arc: 74, life: 480 } },
+          { at: 10.10, sfx: "puff",
+            lines: { x: 60, y: 52, dir: -34, n: 3, len: 11, spread: 2.6, life: 700 } },
+          { at: 13.60, sfx: "plate" }],
+
+      /* 4 · the lid comes off the tin, and there is nothing inside. One
+         clank of real metal, then two strokes of surprise over his head. */
+      4: [{ at: 0.80, sfx: "open",
+            lines: { x: 74, y: 56, dir: -62, n: 2, len: 6, spread: 2, life: 520 } },
+          { at: 2.80,
+            lines: { x: 66, y: 12, dir: -90, n: 2, len: 4.5, spread: 3.2, life: 460 } }],
+
+      /* 5 · he sets off on the bicycle. Speed lines trail behind the back
+         wheel; the bell already has its own sound and its own lettering.
+
+         `cycle` is the one cue that is a BED rather than an accent: 8.2s of
+         wheels on road, running from the moment he pushes off and fading as he
+         arrives, so the bell rings into quiet. It replaced a synthesised gust,
+         which said "something moved" where the picture says "a bicycle". It is
+         the quietest thing in the book at 18 dB under her voice — a page you
+         notice is not silent rather than a page with a sound effect on it. */
+      5: [{ at: 0.40, sfx: "cycle",
+            lines: { x: 17, y: 58, dir: 178, n: 3, len: 13, spread: 3, life: 760 } },
+          { art: "ring",  at: 8.95, out: 9.90, x: 67, y: 45, w: 21 }],
+
+      /* 6 · the sneeze throws him off the bicycle. Lines off his face, then
+         the flight, then the landing — this page has no mixed-in sound of
+         its own, so the impact is made here. */
+      6: [{ at: 3.30, art: "sneeze", life: 1000, x: 63, y: 24, w: 20,
+            lines: { x: 62, y: 26, dir: 34, n: 4, len: 7, burst: true, arc: 70, life: 470 } },
+          { at: 5.35, sfx: "whoosh",
+            lines: { x: 42, y: 30, dir: 150, n: 3, len: 12, spread: 2.8, life: 720 } },
+          { at: 8.20, sfx: "crash",
+            lines: { x: 74, y: 74, dir: -90, n: 4, len: 6.5, burst: true, arc: 150, life: 520 } },
+          /* AND THE BOY, 0.35s after the bicycle. Two things hit the road here
+             and they are not the same thing: the frame goes over first and he
+             lands on top of it. Together they read as one accident with a
+             shape; either alone reads as half of it. */
+          { at: 8.55, sfx: "whump" }],
+
+      /* 7 · he stands and beats the dust out of his shirt. The recording
+         already carries the landing and the shaking, so the only sound added
+         here is the bicycle itself finishing falling — metal going quiet on the
+         road a moment after he is down, which is the last of the accident. */
+      7: [{ at: 1.55, sfx: "settle" },
+          { at: 4.40,
+            lines: { x: 70, y: 52, dir: -14, n: 3, len: 7, spread: 2.4, life: 640 } }],
+
+      /* 8 · the sneeze at the juice stall, and the glass going over. The
+         splash is already mixed into the recording. */
+      8: [{ at: 9.65, art: "sneeze", life: 1000, x: 38, y: 37, w: 20,
+            lines: { x: 38, y: 34, dir: 20, n: 4, len: 7, burst: true, arc: 68, life: 470 } },
+          { at: 14.90,
+            lines: { x: 52, y: 74, dir: 90, n: 3, len: 6, spread: 2.2, life: 560 } }],
+
+      /* 9 · the sneeze, the samosa hitting the ground, and the dog away with
+         it. The lettering is already here; the plop is not. */
+      9: [{ at: 5.45, art: "sneeze", life: 1000, x: 68, y: 45, w: 20,
+            lines: { x: 62, y: 40, dir: 12, n: 4, len: 6.5, burst: true, arc: 66, life: 450 } },
+          { art: "tub", at: 7.75, out: 7.90, x: 40, y: 54, w: 22,
+            sfx: "plop",
+            lines: { x: 56, y: 74, dir: 90, n: 2, len: 5, spread: 1.8, life: 480 } },
+          /* the dog making off with it. The chewing sits under "और कुत्ता झट से
+             चट कर गया" rather than after it — he is eating while she says so —
+             and it is the quietest of the six for that reason. */
+          { at: 8.55, sfx: "munch",
+            lines: { x: 24, y: 84, dir: 182, n: 3, len: 10, spread: 2.4, life: 660 } }],
+
+      /* 10 · he walks home with the flour, and his mother is back.
+
+         The footsteps run from 0.30 and last 3.8s, which covers "उदास आरु ने
+         आटा लिया और घर लौट आया" and stops before "अम्मा भी वापस आ गई" — he is
+         walking for the first half of the page and arrived by the second, so
+         the steps stop when the sentence about them does. The chime for his
+         mother is at 6.85, well clear of them. */
+      10: [{ at: 0.30, sfx: "steps" },
+           { at: 6.85, sfx: "chime",
+             lines: { x: 15, y: 40, dir: -90, n: 3, len: 5, burst: true, arc: 120, life: 620,
+                      tone: "light" } }],
+
+      /* 11 · the sneeze, then everything on the shelves comes down. The big
+         clatter is mixed into the recording at 8.05, so what is added here is
+         the first slip of metal a moment before it. */
+      11: [{ at: 4.15, art: "sneeze", life: 1000, x: 62, y: 41, w: 20 },
+           { at: 3.40,
+             lines: { x: 74, y: 30, dir: 8, n: 4, len: 7, burst: true, arc: 72, life: 470 } },
+           { at: 6.25, sfx: "settle",
+             lines: { x: 86, y: 62, dir: 90, n: 3, len: 6.5, spread: 2.6, life: 600 } },
+           { art: "crash", at: 7.20, out: 8.70, x: 27, y: 73, w: 30 }],
+
+      /* 12 · she gathers the pots up, and finds the locket she lost. */
+      12: [{ at: 0.50, sfx: "settle",
+             lines: { x: 32, y: 76, dir: -70, n: 2, len: 5.5, spread: 2, life: 520 } },
+           { at: 6.80, sfx: "chime",
+             lines: { x: 10, y: 84, dir: -90, n: 3, len: 4.5, burst: true, arc: 130, life: 700,
+                      tone: "light" } }],
+
+      /* 13 · she holds the locket up, laughing, and Aaru laughs too. */
+      13: [{ at: 0.30, sfx: "chime",
+             lines: { x: 11, y: 40, dir: -90, n: 3, len: 4.5, burst: true, arc: 124, life: 700,
+                      tone: "light" } }],
+
+      /* The film keeps its own soundtrack and its own cue list. Nobody has
+         supplied timings for it and its spoken lines are written down nowhere
+         in the project, so guessing would only put things in the wrong
+         places. Entries added here run exactly like the page cues above. */
+      film: []
+    };
+
+    /* An <img> takes its width from the CSS but its *height* from the file,
+       which it does not know until the file has decoded. Left to itself the
+       first burst of a reading would therefore start as a strip of zero
+       height and snap into shape partway through its own animation. So the
+       shape is stated up front, and each preload below corrects it from the
+       real file in case an asset is ever re-exported at another size. */
+    const shape = { ring: 1100 / 1011, tub: 1100 / 686, crash: 1100 / 686,
+                    sneeze: 1100 / 1047 };
+
+    let layer   = null;
+    let media   = null;   /* the element whose playhead we are following */
+    let cues    = [];     /* the live cue list */
+    let queued  = [];     /* the cue list for the page now bound */
+    let prev    = 0;      /* playhead as of the previous frame */
+    let ticking = false;
+
+    const host = () => (layer || (layer = $("#popart")));
+
+    function clear() {
+      const l = host();
+      if (l) l.replaceChildren();
+    }
+
+    /* one comic burst; each removes only itself, so two close together never
+       cancel one another out */
+    function burst(cue) {
+      const l = host();
+      if (!l) return;
+
+      const img = document.createElement("img");
+      img.className = "popart__item";
+      img.src = ART + cue.art + ".webp";
+      img.alt = "";
+      img.draggable = false;
+      img.decoding = "async";
+      img.style.setProperty("--px", cue.x);
+      img.style.setProperty("--py", cue.y);
+      img.style.setProperty("--pw", cue.w);
+      if (shape[cue.art]) img.style.aspectRatio = String(shape[cue.art]);
+      l.appendChild(img);
+
+      /* `life` sets the whole thing end to end, in ms, for a burst that should
+         be a beat rather than a caption. At life:1000 the throw-in and the
+         shrink-away leave 320ms of hold, which reads as a punch — right for a
+         sneeze, which is one sharp event and not something to be read.
+
+         Without it the hold is as long as the sound it belongs to, floored at
+         MIN_HOLD, which is what the lettering bursts want: those name a noise
+         and have to stay long enough to be read. */
+      const total = cue.life
+        ? Math.max(POP_IN + POP_OUT + 60, cue.life)
+        : POP_IN + Math.max(MIN_HOLD, (cue.out || cue.at) - cue.at) * 1000 + POP_OUT;
+      const hold  = total - POP_IN - POP_OUT;
+      const at    = (ms) => ms / total;
+      const T     = (s, r) => "translate(-50%, -50%) scale(" + s + ") rotate(" + r + "deg)";
+
+      /* Reduced motion still gets the burst — it is what the sound looks
+         like — but it arrives by fading rather than by being thrown. */
+      const frames = calm()
+        ? [{ offset: 0,                 transform: T(1, 0), opacity: 0 },
+           { offset: at(POP_IN),        transform: T(1, 0), opacity: 1 },
+           { offset: at(POP_IN + hold), transform: T(1, 0), opacity: 1 },
+           { offset: 1,                 transform: T(1, 0), opacity: 0 }]
+
+        : [{ offset: 0,                 transform: T(0.30, -9),
+             opacity: 0, easing: "cubic-bezier(.16,.9,.28,1.3)" },
+           { offset: at(POP_IN * 0.46), transform: T(1.14, 2.4),
+             opacity: 1, easing: "cubic-bezier(.36,0,.4,1)" },
+           { offset: at(POP_IN * 0.74), transform: T(0.955, -1.4),
+             opacity: 1, easing: "cubic-bezier(.3,0,.2,1)" },
+           { offset: at(POP_IN),        transform: T(1, 0),
+             opacity: 1, easing: "linear" },
+           { offset: at(POP_IN + hold), transform: T(1, 0),
+             opacity: 1, easing: "cubic-bezier(.5,0,.78,.1)" },
+           { offset: 1,                 transform: T(0.52, -5),
+             opacity: 0 }];
+
+      const a = img.animate(frames, { duration: total, fill: "both" });
+      const gone = () => img.remove();
+      a.finished.then(gone, gone);
+    }
+
+    /* everything one cue asks for */
+    function fire(cue) {
+      if (cue.sfx)   Sfx.play(cue.sfx);
+      if (cue.lines) Lines.draw(host(), cue.lines);
+      if (cue.art)   burst(cue);
+    }
+
+    /* Cues fire on the playhead *crossing* them, never on a one-time flag —
+       which is what makes a sound heard twice happen twice, and a replayed
+       page happen again. */
+    function tick() {
+      if (!ticking || !media) { ticking = false; return; }
+      const now = media.currentTime;
+
+      if (now + 0.05 < prev) {
+        prev = now;                    /* rewound: arm again, fire nothing */
+      } else if (now > prev) {
+        for (const c of cues) {
+          const mark = Math.max(0, c.at - LEAD);
+          if (prev < mark && mark <= now) fire(c);
+        }
+        prev = now;
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function follow(el, list) {
+      if (!el) return;
+      media = el;
+      cues  = list || [];
+      prev  = el.currentTime;          /* never fire what is already behind us */
+      if (!ticking) { ticking = true; requestAnimationFrame(tick); }
+    }
+
+    function unfollow() { ticking = false; media = null; }
+
+    /* PageAudio says when sound starts and stops, and only by then does its
+       element exist to be followed. */
+    PageAudio.onState((on) => {
+      if (on) follow(PageAudio.media, queued); else unfollow();
+    });
+
+    return {
+      /* every page change: drop whatever is on screen, load that page's cues.
+         A page with nothing happening in it simply gets none. */
+      bind(page) {
+        clear();
+        Sfx.hush();               /* nothing follows the reader off a page */
+        queued = CUES[page] || [];
+        Sfx.warm();               /* the six recordings, once per reading */
+        /* Warm the artwork the moment the page arrives. The burst is still
+           seconds away, and an <img> that has not decoded yet has its width
+           from the CSS but no height at all — so the very first burst of a
+           reading would snap into shape halfway through its own animation. */
+        for (const c of queued) {
+          if (!c.art) continue;
+          const im = new Image();
+          im.decoding = "async";
+          im.onload = () => {
+            if (im.naturalHeight) shape[c.art] = im.naturalWidth / im.naturalHeight;
+          };
+          im.src = ART + c.art + ".webp";
+        }
+        if (media && media === PageAudio.media) { cues = queued; prev = 0; }
+      },
+
+      /* for the two moments that have no recording behind them: the cover's
+         entrance, and the page turn itself */
+      sfx(name) { Sfx.play(name); },
+
+      /* the film runs on its own timeline, with its own cues */
+      attachFilm(film) {
+        if (!film) return;
+        film.addEventListener("playing", () => follow(film, CUES.film));
+        film.addEventListener("pause",   () => { if (media === film) unfollow(); });
+        film.addEventListener("ended",   () => { if (media === film) { unfollow(); clear(); } });
+      }
+    };
+  })();
+
+  /* ── Music ──────────────────────────────────────────────────────────────
+     One piece under the whole story, looping, well below everything else.
+
+     LEVEL IS A TENTH of the file's own, which is the asked-for 90% off and
+     also, as it happens, the right answer: the file is mastered at -12.9 LUFS
+     and a tenth of an amplitude is -20 dB, which puts the music at -32.9 LUFS
+     against narration averaging -15.5. Seventeen decibels under a voice is
+     where a bed belongs — present when she is not speaking, gone when she is.
+
+     IT LOOPS SEAMLESSLY, and it did not to begin with. The supplied recording
+     is three minutes that FADE TO SILENCE over their last four seconds, so
+     looping it raw gave a fade out and then a jump back to full volume every
+     three minutes. assets/music/pathways.mp3 is that recording with the fade
+     cut off and its tail crossfaded into its own opening: 172s that end at
+     -21 dB where they begin at -17.7, which the ear does not catch, instead of
+     ending at -77.
+
+     IT STARTS ON PLAY and not on load, for two reasons that agree: a browser
+     will not play audio before a gesture, and the title page is the one place
+     in the book with no narration to sit under. It fades rather than stopping
+     dead, because a bed that vanishes is more noticeable than one that leaves.
+     And it goes before the film, which has a soundtrack of its own. */
+  const Music = (() => {
+    const SRC   = "assets/music/pathways.mp3?v=1";
+    const LEVEL = 0.10;    /* a tenth of the file: the 90% asked for, = -20 dB */
+    const FADE  = 1100;    /* ms, in and out */
+
+    let el = null, fader = 0;
+
+    function element() {
+      if (el) return el;
+      el = new Audio();
+      el.src = SRC;
+      el.loop = true;      /* the whole point: it never has to be restarted */
+      el.preload = "auto";
+      el.volume = 0;
+      return el;
+    }
+
+    /* A ramp rather than a jump. Twelve steps is enough for a fade this long
+       to be heard as one movement, and it costs nothing. */
+    function ramp(to, then) {
+      clearInterval(fader);
+      const a = element();
+      const from = a.volume;
+      const steps = 12;
+      let i = 0;
+      fader = setInterval(() => {
+        i++;
+        const v = from + (to - from) * (i / steps);
+        try { a.volume = Math.min(1, Math.max(0, v)); } catch { /* detached */ }
+        if (i >= steps) { clearInterval(fader); if (then) then(); }
+      }, FADE / steps);
+    }
+
+    return {
+      /* on Play. Safe to call twice: an element already playing is left alone
+         and simply brought back up to level. */
+      start() {
+        const a = element();
+        a.muted = PageAudio.muted;
+        const p = a.paused ? a.play() : null;
+        if (p && p.catch) p.catch(() => { /* refused: stay silent */ });
+        ramp(LEVEL);
+      },
+
+      /* leaving the story, or the film taking over */
+      stop() {
+        if (!el) return;
+        ramp(0, () => { try { el.pause(); } catch { /* already gone */ } });
       }
     };
   })();
@@ -769,6 +1608,7 @@
     /* give the narrator this page's two copies of the words to light up */
     function bindAudio() {
       PageAudio.bind([scenes[live], caption], index + 1);
+      Beats.bind(index + 1);    /* this page's bursts, motion lines and sounds */
     }
 
     function preload(i) {
@@ -1138,6 +1978,7 @@
     function enter() {
       if (on) return;
       on = true;
+      Music.start();            /* the bed, from here to the end of the story */
       /* only rescue focus for keyboard users: the bar is about to go inert,
          but a mouse click shouldn't leave a focus ring on an arrow */
       const el = document.activeElement;
@@ -1153,6 +1994,7 @@
     function exit() {
       if (!on) return;
       on = false;
+      Music.stop();             /* out of the story, out of the music */
       flip(() => root.classList.remove("is-play"));
       bar.inert = false;
       listen(false);
@@ -1215,6 +2057,63 @@
        keyboard and a swipe alike, so the rule cannot be sidestepped by
        reaching for a different input */
     const forward = () => { if (canForward()) Book.next(); };
+
+    /* ── where the story starts ───────────────────────────────────────────
+       The title page is the home screen and not page one. It is still
+       PAGES[0] — the book is thirteen pages long and the finale still counts
+       from the end — but it is the thing a reader looks at before they have
+       asked for anything, and once they have asked, it is behind them. So
+       FIRST is the floor: Play opens it, nothing goes back past it, and the
+       jump panel does not offer it.
+
+       Backward moves go through here for exactly the reason forward() exists:
+       the keyboard, a swipe and the panel are three ways to the same move, and
+       a rule enforced at only two of them is not a rule. */
+    const FIRST = 1;
+    const back = () => { if (Book.index > FIRST) Book.prev(); };
+
+    /* ── the auto-turn ────────────────────────────────────────────────────
+       The book reads itself: a page moves on once it has finished speaking,
+       so nobody has to press anything. It hangs off the same single signal
+       the forward arrow used to wait for, which is what makes it safe — that
+       signal fires on a clip's real `ended`, and equally on a clip that
+       failed to load or was refused playback. A page that loses its audio
+       still turns, so the story can never strand a reader on a page with the
+       arrows gone.
+
+       The beat afterwards is not politeness. It lets the last word land, and
+       it lets a sound-effect burst finish its own animation — page 11's
+       धड़ाम is still shrinking away 0.26s after that clip ends.
+
+       A silent page waits longer, because there is no voice to fill it. Since
+       the title page stopped being page one, nothing in a reading is silent and
+       AUTO_SILENT does not currently fire — it stays because "how long a page
+       with nothing to say holds for" is a question the auto-turn has to have an
+       answer to, and finding out it has none by adding a wordless page is the
+       worse way to learn it. */
+    const AUTO_BEAT   = 1200;   /* ms after a page has spoken */
+    const AUTO_SILENT = 2600;   /* ms after a page with nothing to say */
+    let autoTimer = 0;
+
+    function autoTurn(from) {
+      clearTimeout(autoTimer);
+      /* Only a book actually being read turns itself. The title page becomes
+         "ready" as soon as its entrance has played, which happens on load as
+         well as on Play — without this the home screen would walk off into
+         the story on its own before anyone had asked it to. */
+      if (!PlayMode.on) return;
+
+      const spoken = from === Book.index ? PageAudio.hasClip : true;
+      autoTimer = setTimeout(function turn() {
+        /* the reader has moved on by themselves — that page's turn is void */
+        if (Book.index !== from) return;
+        if (!PlayMode.on) return;           /* they have left the story */
+        /* mid-turn, or they are picking a page out of the menu: wait, do not
+           give up, or the book would simply stop */
+        if (Book.busy || JumpMenu.open) { autoTimer = setTimeout(turn, 600); return; }
+        Book.next();
+      }, spoken ? AUTO_BEAT : AUTO_SILENT);
+    }
 
     /* ── the idle hand ────────────────────────────────────────────────────
        A child who has stopped touching the screen has usually stopped because
@@ -1514,15 +2413,131 @@
       const host = $("#finale");
       const film = $("#finaleFilm");
       const CLIP = "assets/video/aru.mp4";
+      Beats.attachFilm(film);   /* the film keeps its own cue list */
       /* the beat between the last sheet leaving and the film starting to move:
          the reveal lands on a held frame, and then the story moves */
       const PLAY_DELAY = 350;
       let ran = false;
 
+      /* ── and then the game ────────────────────────────────────────────────
+         The film is the end of the story and the beginning of the game, so
+         when it finishes the game is what comes next — not the last page
+         again, and not a screen asking whether to go on. ?start=1 tells the
+         game the child has just watched the ending and pressed nothing since,
+         which is its cue not to show its title screen at all.
+
+         The changeover happens under the paper: the sheets fly in, cover the
+         viewport, and the new page is asked for while nothing can be seen of
+         either. That is the whole trick to it looking instant.
+
+         WARM is what makes it actually be instant, and it is asked for as the
+         film is prepared, so the fetching has the film's full 25 seconds to
+         happen in. The three cards are fetched as images because that works
+         from the filesystem as well as from a server; the game's own three
+         files are prefetched, which only a server will honour. The ?v= on two
+         of them has to match what the game's index.html asks for or the cache
+         is simply missed — harmless, but no faster. */
+      const GAME = "aaru_ki_cheenk-main/index.html?start=1";
+      const WARM_FETCH = [
+        "aaru_ki_cheenk-main/index.html",
+        "aaru_ki_cheenk-main/styles.css?v=155",
+        "aaru_ki_cheenk-main/app.js?v=155"
+      ];
+      const WARM_ART = [
+        "aaru_ki_cheenk-main/assets/images/r1-house.webp",
+        "aaru_ki_cheenk-main/assets/images/r1-sneeze.webp",
+        "aaru_ki_cheenk-main/assets/images/r1-pot.webp"
+      ];
+      let warmed = false, handed = false;
+
+      /* ── is the game even there? ──────────────────────────────────────────
+         It is a separate folder inside this one, and a folder can be moved or
+         deleted — it has been once already. When it is gone, every route into
+         it becomes a navigation to a missing page: the film would end by
+         putting a child in front of a browser error with nothing to press.
+
+         So the warm-up doubles as the answer. One of the three cards it
+         fetches reports back, and an <img> is the one thing that can ask "is
+         this file there" from a filesystem as well as from a server — fetch()
+         is refused for local files, which is what made this worth doing at all.
+         Until it answers, `there` stays null, meaning "not known yet"; once it
+         answers, the film either hands over or gives the picture back the way
+         it used to before there was a game to hand over to.
+
+         Restoring the folder needs no code change. The probe simply starts
+         succeeding again. */
+      let there = null;
+
+      function warmGame() {
+        if (warmed) return;
+        warmed = true;
+        for (const href of WARM_FETCH) {
+          const l = document.createElement("link");
+          l.rel = "prefetch";
+          l.href = href;
+          document.head.appendChild(l);
+        }
+        WARM_ART.forEach((src, i) => {
+          const im = new Image();
+          im.decoding = "async";
+          /* the first one answers for all three: they live in the same folder */
+          if (i === 0) {
+            im.onload  = () => { there = true;  };
+            im.onerror = () => { there = false; };
+          }
+          im.src = src;
+        });
+      }
+
+      /* Once, and only from the film's own `ended`. `handed` is not the same
+         guard as `ran`: that one stops the film being started twice, this one
+         stops the game being opened twice — a second `ended` from a replay, or
+         a stray call, must not fire a navigation that is already in flight. */
+      /* The sheets cover the viewport at 1.4s at the very outside, and Paper
+         gives up waiting on its own `covered` at 2.5s, so nothing legitimate
+         reaches this. It is here because the one thing this changeover must
+         never do is fail quietly: if a transition were somehow already in
+         flight, or a browser refused the animation outright, the child would
+         be left sitting in front of a finished film with no way on. Late is
+         survivable. Never is not. */
+      const HANDOVER_CAP = 2600;
+
+      /* The one door into the game, whoever opens it: the film reaching its
+         end, or a child choosing "खेल खेलो" out of the menu without reading
+         that far. Both go under the paper and both are once-only. */
+      function openGame() {
+        if (handed) return;
+        handed = true;
+        warmGame();                  /* a no-op if the film already asked */
+        PageAudio.stop();            /* the story stops talking on its way out */
+        let gone = false;
+        const go = () => {
+          if (gone) return;
+          gone = true;
+          /* The one case that must not become a browser error: the game is not
+             where it should be. Then the sheets simply give the picture back,
+             which is what the ending did before there was a game — a finished
+             story rather than a dead end. `there === null` means the probe has
+             not answered yet, and an unanswered probe is treated as present:
+             the folder is normally there, and a slow answer should not cost a
+             child the game. */
+          if (there === false) { host.classList.remove("is-playing"); return; }
+          location.href = GAME;
+        };
+        window.playPaperTransition({ covered: go });
+        setTimeout(go, HANDOVER_CAP);
+      }
+
       /* back to a closed book: film put away, ready to run again if the reader
          comes back to the last page */
       function reset() {
         ran = false;
+        /* And the handover is armed again with it. `handed` guards one showing
+           of the film, not the lifetime of the page: a reader who leaves the
+           last page mid-film and comes back to it gets the film again, and it
+           has to be able to hand over at the end of that showing too. Leaving
+           this true would strand them in front of a finished film. */
+        handed = false;
         host.classList.remove("is-playing");
         try { film.pause(); } catch { /* never started */ }
         if (film.hasAttribute("src")) { film.removeAttribute("src"); film.load(); }
@@ -1533,6 +2548,7 @@
          from a rewound start, so a second visit to the page begins at the
          beginning rather than wherever it was left. */
       function prepareFilm() {
+        warmGame();                 /* the game has the film's length to arrive in */
         if (film.getAttribute("src") !== CLIP) film.src = CLIP;
         film.poster = PAGES[PAGES.length - 1].img;
         try { film.currentTime = 0; } catch { /* not seekable yet */ }
@@ -1573,6 +2589,8 @@
       function run() {
         if (ran) return;             /* once per visit to the last page */
         ran = true;
+        /* the film has a soundtrack of its own to be heard over */
+        Music.stop();
 
         window.playPaperTransition({
           prepare: prepareFilm,             /* load it under cover of the flight */
@@ -1580,15 +2598,14 @@
           done: startFilmAfterBeat          /* revealed, a beat, then it moves   */
         });
 
-        film.addEventListener("ended", () => {
-          /* and paper again to give the picture back */
-          window.playPaperTransition({
-            covered: () => { host.classList.remove("is-playing"); }
-          });
-        }, { once: true });
+        /* Not `loop`ed and not restarted anywhere, so this fires once; the
+           listener is once-only as well, and openGame has its own guard. */
+        film.addEventListener("ended", openGame, { once: true });
       }
 
-      return { run, reset };
+      /* warm: the menu opening is a head start on the game's 600KB.
+         here: whether the folder is actually present, for the menu to ask. */
+      return { run, reset, warm: warmGame, openGame, get here() { return there !== false; } };
     })();
 
     /* ── the jump menu ────────────────────────────────────────────────────
@@ -1614,12 +2631,21 @@
       const veil  = $("#jumpVeil");
       const grid  = $("#jumpGrid");
       const skip  = $("#jumpSkip");
+      const game  = $("#jumpGame");
       let on = false, built = false;
+      let closed = null;   /* what to tell when the panel shuts */
 
       function build() {
         if (built) return;
         built = true;
+        /* The title page is not offered. It is the home screen, and a tile
+           leading back to it would be the one way left of putting the cover
+           back on screen mid-story — with no Play button on it, because that
+           only shows outside play mode. The pages keep their real indices, so
+           `i` is still what Book.jump wants. */
         grid.replaceChildren(...PAGES.map((page, i) => {
+          if (i < FIRST) return null;
+
           const li = document.createElement("li");
           li.className = "jump__item";
 
@@ -1646,7 +2672,7 @@
 
           li.append(pick, no);
           return li;
-        }));
+        }).filter(Boolean));
       }
 
       /* mark where the reader is, and whether there is anywhere to skip to */
@@ -1672,6 +2698,10 @@
         });
         btn.setAttribute("aria-expanded", "true");
         PageAudio.stop();            /* the narration waits rather than talking over this */
+        Finale.warm();               /* a head start on the game, in case they choose it */
+        /* and if the game is not in the project, do not offer it: the probe in
+           Finale answers once the warm-up has been asked for, which is now. */
+        setTimeout(() => { game.hidden = !Finale.here; }, 400);
         const here = grid.querySelector('[aria-current="page"]') || grid.querySelector(".jump__pick");
         if (here) here.focus();
       }
@@ -1679,6 +2709,7 @@
       function close() {
         if (!on) return;
         on = false;
+        if (closed) closed();   /* the narration was stopped on open */
         panel.classList.remove("is-open");
         veil.classList.remove("is-open");
         btn.setAttribute("aria-expanded", "false");
@@ -1694,6 +2725,13 @@
       return {
         get open() { return on; },
         toggle() { on ? close() : open(); },
+
+        /* Told when the panel goes away. Opening it stops the narration, and
+           with the arrows gone the book turns on that narration finishing —
+           so somebody has to decide what happens to a page the reader
+           interrupted. UI knows whether it had already finished; this module
+           only knows that it closed. */
+        onClose(fn) { closed = fn; },
         close,
         start() {
           btn.addEventListener("click", () => JumpMenu.toggle());
@@ -1704,6 +2742,17 @@
             close();
             heard.add(from);         /* they are done with this page by choice */
             Book.next();
+          });
+
+          /* Out of the story and into the game. The panel is closed first, the
+             way picking a page does it — it draws above the paper transition,
+             so it has to be on its way out before the sheets arrive. Closing
+             also restarts this page's narration, which openGame then stops:
+             the right order, not a coincidence. */
+          game.addEventListener("click", () => {
+            game.disabled = true;    /* one tap; openGame guards the rest */
+            close();
+            Finale.openGame();
           });
 
           /* Escape belongs to the panel while it is open: it must close the
@@ -1742,7 +2791,9 @@
         if (JumpMenu.open) return null;                   /* choosing a page */
         const cover = document.documentElement.classList.contains("at-cover");
         if (cover && !PlayMode.on) return "start";        /* press Play */
-        if (canForward()) return "next";                  /* the gate is open */
+        /* Nothing to point at once the story is running: the pages turn
+           themselves, and the arrow the hand used to tap is hidden. Pressing
+           Play is the only thing still asked of a reader. */
         return null;
       }
 
@@ -1832,7 +2883,7 @@
 
     function bind() {
       /* nav ------------------------------------------------------------- */
-      prev.addEventListener("click", () => { Book.prev(); });
+      prev.addEventListener("click", () => { back(); });
       next.addEventListener("click", forward);
 
       /* keyboard -------------------------------------------------------- */
@@ -1844,8 +2895,8 @@
         let handled = true;
         switch (e.key) {
           case "ArrowRight": case "PageDown": forward(); break;
-          case "ArrowLeft":  case "PageUp":   Book.prev(); break;
-          case "Home": Book.jump(0); break;
+          case "ArrowLeft":  case "PageUp":   back(); break;
+          case "Home": Book.jump(FIRST); break;
           case "End":  Book.jump(Book.total - 1); break;
           case " ":
             if (onButton) { handled = false; break; }   // let the button click
@@ -1866,7 +2917,7 @@
         id = null;
         const dx = e.clientX - sx, dy = e.clientY - sy;
         if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
-        dx < 0 ? forward() : Book.prev();
+        dx < 0 ? forward() : back();
       });
       frame.addEventListener("pointercancel", () => { id = null; });
 
@@ -1883,10 +2934,19 @@
          counts as unheard again from this moment, so Forward goes away until
          the page has played itself out. */
       const play = () => {
-        heard.delete(Book.index);
-        sync(Book.index, Book.total);
         PlayMode.enter();
-        Book.present();
+        /* Straight to the first painted page. The reader has been looking at
+           the title all along and has just pressed the thing on it, so playing
+           its entrance again at them is showing them what they have already
+           seen and answering their press with a wait — 2.6s of it, since a page
+           with no words to say gets the longer beat before it turns itself.
+           The turn carries them off the cover instead, which is what pressing
+           it meant.
+
+           From anywhere else — the panel can put a reader back mid-story and
+           they may press Play again — it still means "this page, from the top". */
+        if (Book.index === 0) Book.jump(FIRST);
+        else { heard.delete(Book.index); sync(Book.index, Book.total); Book.present(); }
       };
 
       playBtn.addEventListener("click", play);
@@ -1949,12 +3009,49 @@
         bind();
         Book.onChange(sync);
 
+        /* The page itself is a thing that moves, so it gets a sound too — the
+           one effect that is the same everywhere, because it belongs to the
+           book rather than to any scene. It fires at the top of the turn,
+           where emit() is, so it lands with the page starting to lift rather
+           than after it has gone. */
+        /* Once per turn, not twice. go() announces a change at both ends of a
+           page turn — at the top so the button states update immediately, and
+           again once the new page has bound — which is right for sync() and
+           doubles anything else hung off it. Measured before this guard: 24
+           paper sounds across a twelve-page reading.
+
+           The first of the two announcements already carries the new index, so
+           this still lands with the page starting to lift rather than after it
+           has gone. */
+        let sounded = -1;
+        Book.onChange((i) => {
+          if (!PlayMode.on || i === sounded) return;
+          sounded = i;
+          Beats.sfx("page");
+        });
+
         /* the only thing that opens the way forward */
         Book.onReady((i) => {
           heard.add(i);
           if (i === Book.index) sync(Book.index, Book.total);
-          /* the last page finishing is the story finishing: roll the ending */
+          /* the last page finishing is the story finishing: roll the ending.
+             Every other page finishing turns itself. */
           if (i === Book.total - 1) Finale.run();
+          else if (i === Book.index) autoTurn(i);
+        });
+
+        /* The jump panel stops the narration when it opens. If the reader
+           shuts it again without choosing a page, the page they were on has
+           nothing left to finish it — and the book now turns on that finish,
+           so it would quietly stop instead. A page already heard just needs
+           its beat again; one interrupted mid-sentence says its piece from
+           the top. (A pick or a skip also closes the panel, and lands here
+           first, but the page it moves to binds a moment later and takes the
+           narration over.) */
+        JumpMenu.onClose(() => {
+          if (!PlayMode.on) return;
+          if (heard.has(Book.index)) autoTurn(Book.index);
+          else PageAudio.play();
         });
 
         sync(Book.index, Book.total);
