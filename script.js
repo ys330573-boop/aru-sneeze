@@ -707,9 +707,8 @@
   })();
 
   /* ── Beats ──────────────────────────────────────────────────────────────
-     The small things that happen at a particular moment of a page: a comic
-     burst of lettering, a few motion lines, a sound effect. One cue table,
-     one clock, three ways of answering it.
+     The small things that happen at a particular moment of a page: a few
+     motion lines, a sound effect. One cue table, one clock.
 
      Every timing here is measured off the recording rather than guessed. Each
      clip was cut into speech runs at its silences and every run measured for
@@ -725,16 +724,33 @@
 
      A cue is a moment plus what happens at it, any combination of:
 
-       art   a burst of comic lettering — out/x/y/w give its life and place
        lines a few motion strokes — see Lines.draw for the shape of it
-       sfx   one of the synthesised sounds in Sfx
+       sfx   a sound, recorded or synthesised — see Sfx
+       art   a picture thrown onto the page — out/x/y/w place it, `life` sets
+             how long the whole pop lasts
+
+     NOTHING USES `art` ANY MORE, and that is a decision rather than an
+     oversight. It drew the comic lettering — आ…छीं, ट्रिन-ट्रिन, टप्प, धड़ाम —
+     over eight moments, and it was taken out because the words sat badly on
+     the paintings: every one of those moments is already spoken by the
+     narrator and already printed into the artwork, so the burst was the third
+     copy of the same words and the only one covering the picture.
+
+     What those moments have instead is what they always also had: the motion
+     strokes, and the sound. The sneeze is still heard, the bell still rings,
+     the samosa still lands.
+
+     THE MECHANISM STAYS, unused, because it is the way to put any picture on
+     any page at a measured moment — see burst(). The five lettering files are
+     still in assets/pop/. To use it again, add {art, at, x, y, w} and, for a
+     file that has not been used before, its width/height ratio to `shape`.
 
      Pages 7, 8 and 11 carry sound effects mixed into the recording itself, so
      they are not given a second one here at the same moment. Nothing is added
      to a page that has no action in it.
 
-     To retime anything, change `at`. To move a burst or a set of lines,
-     change x/y. Nothing else here needs touching. */
+     To retime anything, change `at`. To move a set of lines, change x/y.
+     Nothing else here needs touching. */
   const Beats = (() => {
     const ART = "assets/pop/";
 
@@ -1030,9 +1046,14 @@
           const life   = o.life   || 620;
           const gap    = o.gap    == null ? 70 : o.gap;
           const arc    = o.arc    || 84;
-          const colour = o.tone === "light"
-            ? "rgba(255, 252, 244, .82)"
-            : "rgba(58, 40, 22, .5)";
+          /* White, with a dark edge added in CSS — see .mline. Plain white
+             would vanish over most of this book: sampled behind the strokes,
+             the artwork runs to luminance 188 on the bicycle dust, 195 on the
+             samosa haze and 216 on the whitewashed wall. `tone: "dark"` is
+             still there for anywhere white turns out to be wrong. */
+          const colour = o.tone === "dark"
+            ? "rgba(58, 40, 22, .5)"
+            : "rgba(255, 253, 248, .92)";
 
           for (let i = 0; i < n; i++) {
             /* where this stroke sits, and which way it points */
@@ -1043,7 +1064,7 @@
               /* fanned out of the point, each stroke pushed clear of it */
               ang = dir + (n > 1 ? mid * (arc / (n - 1)) : 0);
               const r = ang * Math.PI / 180;
-              const reach = len * 0.62;
+              const reach = len * 0.66;
               ax = o.x + Math.cos(r) * reach;
               ay = o.y + Math.sin(r) * reach * ASPECT;
             } else {
@@ -1054,7 +1075,8 @@
             }
 
             const el = document.createElement("i");
-            el.className = "mline";
+            /* a burst stroke is tapered the other way: see .mline--out */
+            el.className = o.burst ? "mline mline--out" : "mline";
             el.style.setProperty("--mx", ax);
             el.style.setProperty("--my", ay);
             el.style.setProperty("--ml", len * (o.burst ? 0.78 : 1));
@@ -1124,8 +1146,8 @@
          beat, not a collision — and the 0.95s of it finishes at 14.55, which
          is inside the 1.2s this page holds for after its clip before turning
          itself. So it is heard whole, and nothing cuts it off. */
-      3: [{ at: 9.30, art: "sneeze", life: 1000, x: 41, y: 34, w: 20,
-            lines: { x: 44, y: 40, dir: -142, n: 4, len: 7.5, burst: true, arc: 74, life: 480 } },
+      3: [{ at: 9.30,
+            lines: { x: 44, y: 45, dir: -20, n: 3, len: 9, burst: true, arc: 50, life: 480 } },
           { at: 10.10, sfx: "puff",
             lines: { x: 60, y: 52, dir: -34, n: 3, len: 11, spread: 2.6, life: 700 } },
           { at: 13.60, sfx: "plate" }],
@@ -1147,14 +1169,13 @@
          the quietest thing in the book at 18 dB under her voice — a page you
          notice is not silent rather than a page with a sound effect on it. */
       5: [{ at: 0.40, sfx: "cycle",
-            lines: { x: 17, y: 58, dir: 178, n: 3, len: 13, spread: 3, life: 760 } },
-          { art: "ring",  at: 8.95, out: 9.90, x: 67, y: 45, w: 21 }],
+            lines: { x: 17, y: 58, dir: 178, n: 3, len: 13, spread: 3, life: 760 } }],
 
       /* 6 · the sneeze throws him off the bicycle. Lines off his face, then
          the flight, then the landing — this page has no mixed-in sound of
          its own, so the impact is made here. */
-      6: [{ at: 3.30, art: "sneeze", life: 1000, x: 63, y: 24, w: 20,
-            lines: { x: 62, y: 26, dir: 34, n: 4, len: 7, burst: true, arc: 70, life: 470 } },
+      6: [{ at: 3.30,
+            lines: { x: 66, y: 32, dir: 26, n: 3, len: 9, burst: true, arc: 50, life: 470 } },
           { at: 5.35, sfx: "whoosh",
             lines: { x: 42, y: 30, dir: 150, n: 3, len: 12, spread: 2.8, life: 720 } },
           { at: 8.20, sfx: "crash",
@@ -1175,17 +1196,16 @@
 
       /* 8 · the sneeze at the juice stall, and the glass going over. The
          splash is already mixed into the recording. */
-      8: [{ at: 9.65, art: "sneeze", life: 1000, x: 38, y: 37, w: 20,
-            lines: { x: 38, y: 34, dir: 20, n: 4, len: 7, burst: true, arc: 68, life: 470 } },
+      8: [{ at: 9.65,
+            lines: { x: 40, y: 46, dir: 24, n: 3, len: 8.5, burst: true, arc: 50, life: 470 } },
           { at: 14.90,
             lines: { x: 52, y: 74, dir: 90, n: 3, len: 6, spread: 2.2, life: 560 } }],
 
       /* 9 · the sneeze, the samosa hitting the ground, and the dog away with
          it. The lettering is already here; the plop is not. */
-      9: [{ at: 5.45, art: "sneeze", life: 1000, x: 68, y: 45, w: 20,
-            lines: { x: 62, y: 40, dir: 12, n: 4, len: 6.5, burst: true, arc: 66, life: 450 } },
-          { art: "tub", at: 7.75, out: 7.90, x: 40, y: 54, w: 22,
-            sfx: "plop",
+      9: [{ at: 5.45,
+            lines: { x: 66, y: 54, dir: 172, n: 3, len: 8.5, burst: true, arc: 50, life: 450 } },
+          { at: 7.75, sfx: "plop",
             lines: { x: 56, y: 74, dir: 90, n: 2, len: 5, spread: 1.8, life: 480 } },
           /* the dog making off with it. The chewing sits under "और कुत्ता झट से
              चट कर गया" rather than after it — he is eating while she says so —
@@ -1202,30 +1222,25 @@
          mother is at 6.85, well clear of them. */
       10: [{ at: 0.30, sfx: "steps" },
            { at: 6.85, sfx: "chime",
-             lines: { x: 15, y: 40, dir: -90, n: 3, len: 5, burst: true, arc: 120, life: 620,
-                      tone: "light" } }],
+             lines: { x: 15, y: 40, dir: -90, n: 3, len: 5, burst: true, arc: 120, life: 620 } }],
 
       /* 11 · the sneeze, then everything on the shelves comes down. The big
          clatter is mixed into the recording at 8.05, so what is added here is
          the first slip of metal a moment before it. */
-      11: [{ at: 4.15, art: "sneeze", life: 1000, x: 62, y: 41, w: 20 },
-           { at: 3.40,
-             lines: { x: 74, y: 30, dir: 8, n: 4, len: 7, burst: true, arc: 72, life: 470 } },
+      11: [{ at: 3.40,
+             lines: { x: 64, y: 50, dir: 14, n: 3, len: 9, burst: true, arc: 50, life: 470 } },
            { at: 6.25, sfx: "settle",
-             lines: { x: 86, y: 62, dir: 90, n: 3, len: 6.5, spread: 2.6, life: 600 } },
-           { art: "crash", at: 7.20, out: 8.70, x: 27, y: 73, w: 30 }],
+             lines: { x: 86, y: 62, dir: 90, n: 3, len: 6.5, spread: 2.6, life: 600 } }],
 
       /* 12 · she gathers the pots up, and finds the locket she lost. */
       12: [{ at: 0.50, sfx: "settle",
              lines: { x: 32, y: 76, dir: -70, n: 2, len: 5.5, spread: 2, life: 520 } },
            { at: 6.80, sfx: "chime",
-             lines: { x: 10, y: 84, dir: -90, n: 3, len: 4.5, burst: true, arc: 130, life: 700,
-                      tone: "light" } }],
+             lines: { x: 10, y: 84, dir: -90, n: 3, len: 4.5, burst: true, arc: 130, life: 700 } }],
 
       /* 13 · she holds the locket up, laughing, and Aaru laughs too. */
       13: [{ at: 0.30, sfx: "chime",
-             lines: { x: 11, y: 40, dir: -90, n: 3, len: 4.5, burst: true, arc: 124, life: 700,
-                      tone: "light" } }],
+             lines: { x: 11, y: 40, dir: -90, n: 3, len: 4.5, burst: true, arc: 124, life: 700 } }],
 
       /* The film keeps its own soundtrack and its own cue list. Nobody has
          supplied timings for it and its spoken lines are written down nowhere

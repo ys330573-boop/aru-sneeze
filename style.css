@@ -1577,3 +1577,28 @@ button { font: inherit; color: inherit; }
    To bring the words back, delete this block.
    ------------------------------------------------------------------------- */
 .scene__text, .caption { display: none; }
+
+/* A BURST STROKE TAPERS OUTWARD, where a travelling one fades at both ends.
+   The difference matters: a streak that follows a moving thing is strongest in
+   its middle, but a line thrown out of a sneeze is strongest where it leaves
+   the mouth and dies as it goes. Faded at both ends it read as a dash floating
+   near his face rather than as something coming out of him.
+
+   The stroke's local +x always points away from the burst point (that is the
+   direction `translate(travel%, 0)` moves it in), so 0% here is the inner end. */
+.mline--out {
+  background: linear-gradient(90deg,
+              var(--mc) 0%, var(--mc) 42%, transparent 100%);
+}
+
+/* THE DARK EDGE UNDER A WHITE STROKE, and why a white line needs one here.
+   These sit on painted artwork, not on a flat ground, and sampled directly
+   behind them the paintings run pale: luminance 188 in the bicycle's dust, 195
+   in the haze by the samosa stall, 216 on the whitewashed wall of the kitchen.
+   A plain white stroke is invisible on all three. The edge is what lets one
+   colour work over sky, sand, whitewash and a dark doorway alike — which is
+   how white speed lines have always been drawn over pictures.
+
+   Tight on purpose: the strokes are three or four pixels thick, so a 1.6px
+   shadow is an edge rather than a glow. */
+.mline { filter: drop-shadow(0 0 1.6px rgba(52, 36, 20, .58)); }
