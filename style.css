@@ -922,28 +922,16 @@ button { font: inherit; color: inherit; }
 .is-play body { background-color: var(--paper-warm); }
 
 /* --- leaving Play Mode --------------------------------------------------- */
-.exitbtn {
-  position: fixed; z-index: 30;
-  top: clamp(10px, 1.6vh, 20px); right: clamp(10px, 1.6vw, 22px);
-  display: grid; place-items: center;
-  width: 44px; height: 44px;
-  border: 0; border-radius: 50%;
-  background: rgba(26, 18, 12, .74);
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-  color: #fff; cursor: pointer;
-  box-shadow: 0 8px 20px -8px rgba(0, 0, 0, .6);
-  opacity: 0; visibility: hidden; transform: scale(.9);
-  transition: opacity .3s ease, transform .3s ease, visibility 0s linear .3s;
-}
-.exitbtn svg { width: 20px; height: 20px; }
+/* THERE IS NO WAY OUT, and the round × that used to offer one is gone. It sat
+   in the top corner and faded in whenever the reader moved. What it did was
+   drop the book out of play mode — which only makes the picture smaller and
+   hands back a screen with no controls on it, since the top bar above is
+   display:none. Nothing was gained by leaving, so nothing invites it now.
 
-/* visible in play mode only, and only while the reader is active */
-.is-play.is-stirring .exitbtn {
-  opacity: 1; visibility: visible; transform: scale(1);
-  transition: opacity .3s ease, transform .3s ease, visibility 0s;
-}
+   .is-stirring survives without it: the arrows still fade on a still screen,
+   which is the other half of what it was for. */
 
-/* the arrows fade with it, so a still screen is nothing but the story */
+/* the arrows fade on a still screen, so it is nothing but the story */
 .is-play .navbtn {
   transition: opacity .4s ease, transform .26s cubic-bezier(.34, 1.56, .64, 1),
               background-color .24s ease;

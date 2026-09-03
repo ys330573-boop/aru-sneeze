@@ -2403,10 +2403,10 @@
       idle = setTimeout(() => root.classList.remove("is-stirring"), IDLE);
     }
 
-    const onKey = (e) => {
-      if (e.key === "Escape") { exit(); return; }
-      stir();
-    };
+    /* Escape used to leave play mode, and does not any more — see exit() for
+       why there is no way out. It still counts as the reader being there, so
+       it wakes the arrows like every other key. */
+    const onKey = () => stir();
 
     function listen(add) {
       const fn = add ? "addEventListener" : "removeEventListener";
@@ -2430,6 +2430,19 @@
       if (byKeyboard) $("#nextBtn").focus({ preventScroll: true });
     }
 
+    /* PLAY MODE IS ONE WAY, and nothing calls this.
+
+       There was a round × in the top corner that faded in whenever the reader
+       moved, and Escape did the same thing. Both are gone, because leaving play
+       mode leads nowhere: the top bar is display:none (style.css §3), so the
+       only thing dropping out of it does is make the picture smaller and hand
+       back a screen with no controls on it. A way out that leads somewhere
+       worse is not a way out.
+
+       It is kept because it is the counterpart to enter() and it is what makes
+       the pair a state and not a latch — the undo for everything enter() does,
+       in the same order — so bringing the button back is wiring a click to it
+       and nothing else. */
     function exit() {
       if (!on) return;
       on = false;
@@ -2447,8 +2460,7 @@
 
     return {
       get on() { return on; },
-      enter, exit,
-      toggle() { on ? exit() : enter(); }
+      enter, exit
     };
   })();
 
@@ -2462,7 +2474,6 @@
     const playBtn = $("#playBtn");
     const playLabel = $("#playLabel");
     const startBtn = $("#startBtn");
-    const exitBtn = $("#exitBtn");
     const frame = $("#frame");
 
     /* The book is Hindi. There is no second label set and nothing switches
@@ -2472,7 +2483,7 @@
       mute: "आवाज़ बंद करें", unmute: "आवाज़ चालू करें",
       read: "पढ़कर सुनाओ", reading: "पढ़ना रोको",
       play: "चलाओ", playHint: "कहानी बड़ी करके देखो",
-      start: "कहानी चलाओ", exit: "बाहर आओ"
+      start: "कहानी चलाओ"
     };
 
     /* ── the arrow gate ───────────────────────────────────────────────────
@@ -3302,7 +3313,6 @@
       playLabel.textContent = L.play;
       playBtn.setAttribute("aria-label", `${L.play} — ${L.playHint}`);
       startBtn.setAttribute("aria-label", L.start);
-      exitBtn.setAttribute("aria-label", L.exit);
     }
 
     function syncReadLabel() {
@@ -3438,7 +3448,6 @@
           startBtn.classList.remove("is-pop");
         }
       });
-      exitBtn.addEventListener("click", () => PlayMode.exit());
 
       /* read aloud, with word-by-word highlighting */
       readBtn.addEventListener("click", () => {
