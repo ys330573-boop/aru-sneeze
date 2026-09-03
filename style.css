@@ -1503,6 +1503,40 @@ button { font: inherit; color: inherit; }
    the burst, which is a different thing from decorating the lettering. */
 
 
+/* The rumble squiggles — the wavy pair a comic draws over a stomach. Built in
+   script.js (Beats.squiggles) as an SVG polyline, because a zigzag is a list of
+   points and its stroke has to hold an even weight around every corner.
+
+   The viewBox is 100×32 and the box is sized in cqw with a matching
+   aspect-ratio, so the mark scales uniformly with the picture and the stroke
+   scales with it — --st is in viewBox units, not pixels, which is what keeps
+   the weight right on a phone and on a desktop without a media query.
+
+   overflow: visible so the round caps and the outer corners are not clipped by
+   the box that frames them; the same drop-shadow the lettering carries, so it
+   sits ON the painting rather than in it. */
+.squig {
+  position: absolute;
+  left: calc(var(--sx, 50) * 1%);
+  top:  calc(var(--sy, 50) * 1%);
+  width: calc(var(--sw, 7) * 1cqw);
+  aspect-ratio: 100 / 32;
+  overflow: visible;
+  transform: translate(-50%, -50%) scale(.55);
+  opacity: 0;
+  will-change: transform, opacity;
+  pointer-events: none;
+  filter: drop-shadow(0 .18cqw .3cqw rgba(38, 22, 8, .34));
+}
+
+.squig polyline {
+  fill: none;
+  stroke: var(--sc, currentColor);
+  stroke-width: var(--st, 5);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* The motion strokes share this layer. A stroke is a thin bar with its colour
    fading out at both ends, so it reads as tapered without needing an SVG; the
    rotation, the travel and the fade are all one transform and one opacity in

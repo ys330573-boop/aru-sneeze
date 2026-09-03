@@ -1156,6 +1156,93 @@
       };
     })();
 
+    /* ── Squiggles ──────────────────────────────────────────────────────────
+       The pair of wavy lines a comic draws over a stomach. Lines.draw makes
+       straight tapered bars, which say "this moved that way"; a rumble is not
+       a direction, it is a thing shaking where it stands, and the shape that
+       says so is a zigzag.
+
+       An SVG polyline rather than anything CSS can do: a zigzag is a list of
+       points, and its stroke has to stay an even weight around every corner,
+       which a rotated box cannot manage. The viewBox is fixed at 100×32 and
+       the element is sized in cqw with a matching aspect-ratio, so the whole
+       thing scales uniformly with the picture — corners, weight and all — from
+       a phone to a desktop, with no second number to keep in step.
+
+       The ends are pulled in to a third of the amplitude rather than starting
+       on a full peak, which is what stops the shape reading as a cut-off
+       length of zigzag and lets it read as a mark with a beginning and an end.
+
+       It is animated, and the animation is the point: it pops in, shakes twice
+       where it stands, and goes. A still zigzag is a decoration; a zigzag that
+       jitters is a stomach.
+       -------------------------------------------------------------------- */
+    const SVGNS = "http://www.w3.org/2000/svg";
+
+    function squiggles(o) {
+      const l = host();
+      if (!l || calm()) return;
+
+      const n      = o.n      || 2;
+      const w      = o.w      || 7;      /* each line's width, % of picture   */
+      const step   = o.step   == null ? 3.4 : o.step;   /* cqw between lines  */
+      const cycles = o.cycles || 4;      /* peaks along the zigzag            */
+      const amp    = o.amp    == null ? 0.62 : o.amp;   /* of the half-height */
+      const thick  = o.thick  || 5;      /* viewBox units, so it scales too   */
+      const life   = o.life   || 1100;
+      const gap    = o.gap    == null ? 90 : o.gap;
+      const ink    = o.ink    || "var(--pop-ink)";
+
+      /* the zigzag itself: alternating peaks, both ends drawn in */
+      const points = [];
+      const steps = cycles * 2;
+      for (let k = 0; k <= steps; k++) {
+        const px = (k / steps) * 100;
+        const edge = (k === 0 || k === steps) ? 0.34 : 1;
+        const py = 16 + (k % 2 ? -1 : 1) * amp * 16 * edge;
+        points.push(px.toFixed(2) + "," + py.toFixed(2));
+      }
+
+      for (let i = 0; i < n; i++) {
+        const mid = i - (n - 1) / 2;
+        const svg = document.createElementNS(SVGNS, "svg");
+        svg.setAttribute("viewBox", "0 0 100 32");
+        svg.setAttribute("aria-hidden", "true");
+        svg.setAttribute("focusable", "false");
+        svg.classList.add("squig");
+        svg.style.setProperty("--sx", o.x);
+        svg.style.setProperty("--sy", o.y + mid * step * (9 / 16));
+        svg.style.setProperty("--sw", w);
+        svg.style.setProperty("--sc", ink);
+        svg.style.setProperty("--st", thick);
+
+        const line = document.createElementNS(SVGNS, "polyline");
+        line.setAttribute("points", points.join(" "));
+        svg.appendChild(line);
+        l.appendChild(svg);
+
+        /* pop in · shake twice · go. The shake is along the line's own x, so
+           the pair jitters sideways together the way a rumble reads. */
+        const T = (s, dx) => `translate(-50%, -50%) scale(${s}) translateX(${dx}%)`;
+        const a = svg.animate([
+          { offset: 0,    transform: T(0.55, 0), opacity: 0,
+            easing: "cubic-bezier(.16,.9,.28,1.3)" },
+          { offset: 0.16, transform: T(1.08, 0), opacity: 1,
+            easing: "cubic-bezier(.36,0,.4,1)" },
+          { offset: 0.30, transform: T(1, 3.5),  opacity: 1 },
+          { offset: 0.44, transform: T(1, -3.5), opacity: 1 },
+          { offset: 0.58, transform: T(1, 2.4),  opacity: 1 },
+          { offset: 0.72, transform: T(1, -1.6), opacity: 1 },
+          { offset: 0.84, transform: T(1, 0),    opacity: 1,
+            easing: "cubic-bezier(.5,0,.78,.1)" },
+          { offset: 1,    transform: T(0.86, 0), opacity: 0 }
+        ], { duration: life, delay: i * gap, fill: "both" });
+
+        const gone = () => svg.remove();
+        a.finished.then(gone, gone);
+      }
+    }
+
     /* ── the cue table ────────────────────────────────────────────────────
        Scene by scene: what happens, what motion belongs to it, what it
        sounds like, and when.
@@ -1240,6 +1327,39 @@
          the only thing to give it is the air. */
       2: [{ at: 0.30, sfx: "birds",
             lines: { x: 24, y: 20, dir: 4, n: 2, len: 15, thick: 0.2, spread: 3.4, life: 1500, gap: 320 } },
+          /* HIS STOMACH, on "तभी आरु को भूख लगी।" — the line runs 2.66–4.37 in
+             this clip and 3.20 is inside it. Three short strokes fanned out of
+             his middle: the picture has him sitting with a hand on his belly
+             and nothing else says why, so this is what turns a boy sitting on
+             a step into a boy who is hungry.
+
+             Placed against the step to his left rather than centred on him.
+             His torso is 77.8%–83.8% of the picture across and the porch post
+             ends at 71.9%, which leaves a six-per-cent gap of plain step
+             between them; the fan is measured into it, its right-hand tips
+             touching his side and its left ones stopping short of the post.
+             Centred on the belly instead, the strokes fall on the striped
+             shirt, and dark ink at half opacity over stripes is invisible —
+             rendered and looked at, not assumed.
+
+             A ZIGZAG PAIR, not a fan of straight strokes. The straight ones
+             were tried first and they say the wrong thing: a tapered bar means
+             "this went that way", and a rumbling stomach is not going
+             anywhere — it is shaking where it sits. The two wavy lines are the
+             mark a comic actually uses for it, and being red they read on the
+             step where the book's brown strokes could not be seen at all.
+
+             They arrive 90ms apart and each shakes twice sideways before it
+             goes, so the pair jitters rather than merely appearing.
+
+             The two lines have to be spaced further apart than they are tall,
+             or their peaks interleave and the pair reads as one band of noise
+             rather than as two marks: at amp 0.5 each is 2.0% of the picture
+             high peak to peak and step 4.0 sets them 2.25% apart. That gap is
+             the whole difference between a rumble and a scribble. */
+          { at: 4,
+            squig: { x: 74, y: 80.5, n: 2, w: 6, step: 4, cycles: 4,
+                     amp: 0.5, thick: 5.5, life: 1100, gap: 90 } },
           { at: 4.50, sfx: "growl" }],
 
       /* 3 · the sneeze that empties the plate. The burst of lines comes off
@@ -1316,6 +1436,18 @@
             lines: { x: 62, y: 26, dir: 34, n: 4, len: 7, burst: true, arc: 70, life: 470 } },
           { at: 5.35, sfx: "whoosh",
             lines: { x: 42, y: 30, dir: 150, n: 3, len: 12, spread: 2.8, life: 720 } },
+          /* THE JOLT, as she finishes saying it. "वह गिर पड़ा धड़ाम!" runs
+             5.16–7.99, and "धड़ाम!" is the last of it — a word boundary at
+             7.04–7.15, audible only below -28 dB, then the word itself out to
+             7.99. 8.00 is the moment it lands on: the word is said whole
+             first, and the half second of shaking then runs across the join
+             into the impact in the recording at 8.11 and the crash below it at
+             8.20, so the picture is still moving as the sound of him hitting
+             the road arrives.
+
+             On the word's ONSET, at 7.15, the jolt was over before any of that
+             and read as a separate event from the crash it belongs to. */
+          { at: 8, shake: 0.5 },
           { at: 8.20, sfx: "crash",
             lines: { x: 74, y: 74, dir: -90, n: 4, len: 6.5, burst: true, arc: 150, life: 520 } },
           /* AND THE BOY, 0.35s after the bicycle. Two things hit the road here
@@ -1394,11 +1526,28 @@
              lines: { x: 11, y: 40, dir: -90, n: 3, len: 4.5, burst: true, arc: 124, life: 700,
                       tone: "light" } }],
 
-      /* The film keeps its own soundtrack and its own cue list. Nobody has
-         supplied timings for it and its spoken lines are written down nowhere
-         in the project, so guessing would only put things in the wrong
-         places. Entries added here run exactly like the page cues above. */
-      film: []
+      /* The film keeps its own soundtrack and its own cue list, and entries
+         here run exactly like the page cues above — with `hold` available as
+         well, since a film is the one thing in the book whose clock we can
+         stop.
+
+         THE BEAT AFTER "ओहो!". He looks at the pictures he has just scattered,
+         says "ओहो!", and the speech bubble that carries the whole line — "ओहो!
+         अब क्या करें?" — pops up at 19.05 and stays up until 21.2. In the
+         recording the two halves of it are 18.60–19.56 and 20.31–21.18, three
+         quarters of a second apart, which is a breath rather than a beat: the
+         question arrives before a child has finished reading the line that is
+         asking it.
+
+         So the film stops at 19.60 — four hundredths past the end of "ओहो!",
+         so the word is heard whole and nothing is cut — and holds for a second
+         on him thinking, bubble up. The gap between the two halves becomes
+         1.75s, and the picture is still while it happens, which is what makes
+         it read as him wondering rather than as the film stalling.
+
+         Timings measured off assets/video/aru.mp4 with silence detection at
+         -32 dB, and the bubble's own in and out read off the frames. */
+      film: [{ at: 19.60, hold: 1.0 }]
     };
 
     /* An <img> takes its width from the CSS but its *height* from the file,
@@ -1581,6 +1730,46 @@
       if (cue.sfx)   Sfx.play(cue.sfx);
       if (cue.lines) Lines.draw(host(), cue.lines);
       if (cue.art || cue.word) burst(cue);
+      if (cue.squig) squiggles(cue.squig);
+      if (cue.hold)  hold(cue.hold);
+      if (cue.shake) Shake.run(cue.shake);
+    }
+
+    /* ── a held frame ───────────────────────────────────────────────────────
+       `hold` stops what is playing where it is, for a moment, and then lets it
+       go on. Every other cue here puts something ON the picture; this one takes
+       the picture's own clock away, which is the only way to give a beat to a
+       recording that has none — you cannot add a pause to a file without
+       re-cutting it, but you can decline to advance it.
+
+       The resume is guarded rather than assumed, because a lot can happen in a
+       second: the reader can leave the last page, which tears the film's source
+       out from under it, or another hold can start. A token invalidates any
+       resume still in flight, and the element is checked for still being there,
+       still having a source, and not having been started again by something
+       else — a stale timer must never be able to restart a film the reader has
+       already walked away from.
+
+       Pausing makes the film's own `pause` listener unfollow it, so `media` is
+       null by the time the timer runs. That is why the element is captured here
+       rather than read again later. Playing it again fires `playing`, which
+       re-follows it from wherever it now is, so nothing behind the playhead
+       fires a second time. */
+    let holdToken = 0;
+
+    function hold(seconds) {
+      const el = media;
+      if (!el || el.paused || el.ended) return;
+      const mine = ++holdToken;
+      el.pause();
+      setTimeout(() => {
+        if (mine !== holdToken) return;         /* another hold took over */
+        if (!el.isConnected || el.ended) return;
+        if (!el.hasAttribute("src")) return;    /* torn down while we waited */
+        if (!el.paused) return;                 /* already going again */
+        const p = el.play();
+        if (p && p.catch) p.catch(() => { /* nothing left to do about it */ });
+      }, Math.max(0, seconds) * 1000);
     }
 
     /* Cues fire on the playhead *crossing* them, never on a one-time flag —
@@ -1594,7 +1783,14 @@
         prev = now;                    /* rewound: arm again, fire nothing */
       } else if (now > prev) {
         for (const c of cues) {
-          const mark = Math.max(0, c.at - LEAD);
+          /* A sound is fired a little early so it LANDS on time, the lead
+             covering the moment it takes to start. The two cues that act on
+             the picture itself get no lead: a held frame stopped 0.12s early
+             stops on a different frame from the one that was chosen, and a
+             jolt 0.12s early lands before the word that caused it — early is
+             the direction the eye notices, since a picture that moves before
+             its sound reads as a fault rather than as an impact. */
+          const mark = Math.max(0, c.at - (c.hold || c.shake ? 0 : LEAD));
           if (prev < mark && mark <= now) fire(c);
         }
         prev = now;
@@ -1656,78 +1852,62 @@
     };
   })();
 
-  /* ── Music ──────────────────────────────────────────────────────────────
-     One piece under the whole story, looping, well below everything else.
+  /* ── Shake ──────────────────────────────────────────────────────────────
+     The picture takes a jolt when something lands on it.
 
-     LEVEL IS A TENTH of the file's own, which is the asked-for 90% off and
-     also, as it happens, the right answer: the file is mastered at -12.9 LUFS
-     and a tenth of an amplitude is -20 dB, which puts the music at -32.9 LUFS
-     against narration averaging -15.5. Seventeen decibels under a voice is
-     where a bed belongs — present when she is not speaking, gone when she is.
+     Half a second of it, the amplitude decaying each swing, which is what an
+     impact looks like and what a wobble does not.
 
-     IT LOOPS SEAMLESSLY, and it did not to begin with. The supplied recording
-     is three minutes that FADE TO SILENCE over their last four seconds, so
-     looping it raw gave a fade out and then a jump back to full volume every
-     three minutes. assets/music/pathways.mp3 is that recording with the fade
-     cut off and its tail crossfaded into its own opening: 172s that end at
-     -21 dB where they begin at -17.7, which the ear does not catch, instead of
-     ending at -77.
+     IT IS A CUE, on the word. It hung off the clip ENDING at first, which
+     sounds like the same thing on the page where it is used — page 6's clip
+     finishes on the fall — but is not: her voice says "धड़ाम!" at 7.15s and the
+     clip runs to 10.95, so the jolt came two and a half seconds after the word
+     that caused it, by which time the reader has stopped connecting the two.
+     Being a cue it goes where the sound is, and any page can have one by
+     naming `shake` at a moment in the table above.
 
-     IT STARTS ON PLAY and not on load, for two reasons that agree: a browser
-     will not play audio before a gesture, and the title page is the one place
-     in the book with no narration to sit under. It fades rather than stopping
-     dead, because a bed that vanishes is more noticeable than one that leaves.
-     And it goes before the film, which has a soundtrack of its own. */
-  const Music = (() => {
-    const SRC   = "assets/music/pathways.mp3?v=1";
-    const LEVEL = 0.10;    /* a tenth of the file: the 90% asked for, = -20 dB */
-    const FADE  = 1100;    /* ms, in and out */
+     WHAT MOVES IS THE PICTURE, not the book. The frame carries the artwork and
+     is clipped to it, so it travels as one block against the still cream mat —
+     a camera knocked, rather than a picture come loose in its mount. Shaking
+     the mat instead would take the page arrows with it, and an arrow that
+     jitters reads as a fault rather than as an impact.
 
-    let el = null, fader = 0;
+     Distances are percentages of the frame's own width, so the jolt is the same
+     size relative to the artwork on a phone and on a desktop. Every keyframe
+     keeps translateZ(0), which the frame carries at rest to hold its own
+     compositor layer — dropping it mid-animation would hand the layer back and
+     repaint the picture on every frame of the shake. */
+  const Shake = (() => {
+    const frame = $("#frame");
+    let live = null;
 
-    function element() {
-      if (el) return el;
-      el = new Audio();
-      el.src = SRC;
-      el.loop = true;      /* the whole point: it never has to be restarted */
-      el.preload = "auto";
-      el.volume = 0;
-      return el;
+    function run(seconds) {
+      /* Reduced motion gets none of it. A screen that jumps is the single
+         thing that setting is most clearly asking not to happen, and nothing
+         in the story is lost — the fall is drawn, described and heard. */
+      if (!frame || calm()) return;
+      const ms = Math.max(160, (seconds || 0.5) * 1000);
+      if (live) { try { live.cancel(); } catch { /* already gone */ } }
+
+      const T = (x, y, r) =>
+        `translate3d(${x}%, ${y}%, 0) rotate(${r}deg)`;
+
+      live = frame.animate([
+        { offset: 0,    transform: T(0, 0, 0) },
+        { offset: 0.12, transform: T(-1.05, 0.55, -0.40) },
+        { offset: 0.26, transform: T(0.88, -0.46, 0.34) },
+        { offset: 0.41, transform: T(-0.62, -0.30, -0.24) },
+        { offset: 0.56, transform: T(0.44, 0.34, 0.17) },
+        { offset: 0.71, transform: T(-0.27, 0.18, -0.10) },
+        { offset: 0.86, transform: T(0.13, -0.09, 0.05) },
+        { offset: 1,    transform: T(0, 0, 0) }
+      ], { duration: ms, easing: "linear" });
+
+      const done = () => { live = null; };
+      live.finished.then(done, done);
     }
 
-    /* A ramp rather than a jump. Twelve steps is enough for a fade this long
-       to be heard as one movement, and it costs nothing. */
-    function ramp(to, then) {
-      clearInterval(fader);
-      const a = element();
-      const from = a.volume;
-      const steps = 12;
-      let i = 0;
-      fader = setInterval(() => {
-        i++;
-        const v = from + (to - from) * (i / steps);
-        try { a.volume = Math.min(1, Math.max(0, v)); } catch { /* detached */ }
-        if (i >= steps) { clearInterval(fader); if (then) then(); }
-      }, FADE / steps);
-    }
-
-    return {
-      /* on Play. Safe to call twice: an element already playing is left alone
-         and simply brought back up to level. */
-      start() {
-        const a = element();
-        a.muted = PageAudio.muted;
-        const p = a.paused ? a.play() : null;
-        if (p && p.catch) p.catch(() => { /* refused: stay silent */ });
-        ramp(LEVEL);
-      },
-
-      /* leaving the story, or the film taking over */
-      stop() {
-        if (!el) return;
-        ramp(0, () => { try { el.pause(); } catch { /* already gone */ } });
-      }
-    };
+    return { run };
   })();
 
   /* ── Ambience ───────────────────────────────────────────────────────────
@@ -2238,7 +2418,6 @@
     function enter() {
       if (on) return;
       on = true;
-      Music.start();            /* the bed, from here to the end of the story */
       /* only rescue focus for keyboard users: the bar is about to go inert,
          but a mouse click shouldn't leave a focus ring on an arrow */
       const el = document.activeElement;
@@ -2254,7 +2433,6 @@
     function exit() {
       if (!on) return;
       on = false;
-      Music.stop();             /* out of the story, out of the music */
       TitleVO.stop();           /* and the title stops mid-word rather than turning the page after them */
       flip(() => root.classList.remove("is-play"));
       bar.inert = false;
@@ -2850,8 +3028,6 @@
       function run() {
         if (ran) return;             /* once per visit to the last page */
         ran = true;
-        /* the film has a soundtrack of its own to be heard over */
-        Music.stop();
 
         window.playPaperTransition({
           prepare: prepareFilm,             /* load it under cover of the flight */
