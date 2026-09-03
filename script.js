@@ -706,9 +706,84 @@
     }
   })();
 
+  /* ── TitleVO ────────────────────────────────────────────────────────────
+     The title page's own line, spoken once, when the play button is pressed.
+
+     It is deliberately not part of PageAudio. That module maps one clip per
+     *story* page and reads the page's own words to decide whether it has one;
+     the cover has no words painted into it, so it has no clip and never will.
+     This is the answer to a press rather than the reading of a page — the book
+     holds on the title while it speaks, and the recording ending is what turns
+     it to page one.
+
+     Everything that can end the line reports through the one callback, and
+     exactly once: the real `ended`, a file that will not load, and a play()
+     the browser refuses. A reader must never be left sitting on the title
+     because a recording never arrived.
+
+     Primed on load rather than fetched when the button is pressed, for the
+     same reason Pop is: this sound answers a finger, and a first press that
+     has to go to the network first does not do that.
+     -------------------------------------------------------------------- */
+  const TitleVO = (() => {
+    /* copied from "audio new/title vo.wav" — re-copy it here after re-cutting,
+       and bump ?v= so a plain refresh cannot serve the previous take */
+    const FILE = "assets/audio/title.wav?v=1";
+    let el = null;
+    let done = null;        /* what the end of the line runs; also "is it live" */
+
+    /* whoever gets here first ends it; everything after finds nothing to call */
+    function settle() {
+      const fn = done;
+      done = null;
+      if (fn) fn();
+    }
+
+    function element() {
+      if (el) return el;
+      try {
+        el = new Audio(FILE);
+        el.preload = "auto";
+        el.addEventListener("ended", settle);
+        el.addEventListener("error", settle);
+        el.load();
+      } catch { el = null; }
+      return el;
+    }
+    element();
+
+    /* the reader moved on by themselves: the line is abandoned, not finished,
+       so the turn that hangs off its ending does not run */
+    function stop() {
+      done = null;
+      if (el) { try { el.pause(); el.currentTime = 0; } catch { /* not started */ } }
+    }
+
+    return {
+      get playing() { return !!done; },
+
+      /* Speak the title, then run `then`. A muted book still plays it, in
+         silence, so the beat before the turn is the same length either way —
+         the mute switch takes a sound away, it does not re-time the book. */
+      play(then) {
+        stop();
+        done = typeof then === "function" ? then : null;
+        const a = element();
+        if (!a) { settle(); return; }
+        a.muted = PageAudio.muted;
+        try { a.currentTime = 0; } catch { /* not seekable yet */ }
+        const p = a.play();
+        if (p && p.catch) p.catch(settle);
+      },
+
+      stop
+    };
+  })();
+
   /* ── Beats ──────────────────────────────────────────────────────────────
-     The small things that happen at a particular moment of a page: a few
-     motion lines, a sound effect. One cue table, one clock.
+     The small things that happen at a particular moment of a page: a comic
+     burst of lettering, a few motion lines, a sound effect. One cue table,
+     one clock, three ways of answering it.
 
      Every timing here is measured off the recording rather than guessed. Each
      clip was cut into speech runs at its silences and every run measured for
@@ -724,33 +799,16 @@
 
      A cue is a moment plus what happens at it, any combination of:
 
+       art   a burst of comic lettering — out/x/y/w give its life and place
        lines a few motion strokes — see Lines.draw for the shape of it
-       sfx   a sound, recorded or synthesised — see Sfx
-       art   a picture thrown onto the page — out/x/y/w place it, `life` sets
-             how long the whole pop lasts
-
-     NOTHING USES `art` ANY MORE, and that is a decision rather than an
-     oversight. It drew the comic lettering — आ…छीं, ट्रिन-ट्रिन, टप्प, धड़ाम —
-     over eight moments, and it was taken out because the words sat badly on
-     the paintings: every one of those moments is already spoken by the
-     narrator and already printed into the artwork, so the burst was the third
-     copy of the same words and the only one covering the picture.
-
-     What those moments have instead is what they always also had: the motion
-     strokes, and the sound. The sneeze is still heard, the bell still rings,
-     the samosa still lands.
-
-     THE MECHANISM STAYS, unused, because it is the way to put any picture on
-     any page at a measured moment — see burst(). The five lettering files are
-     still in assets/pop/. To use it again, add {art, at, x, y, w} and, for a
-     file that has not been used before, its width/height ratio to `shape`.
+       sfx   one of the synthesised sounds in Sfx
 
      Pages 7, 8 and 11 carry sound effects mixed into the recording itself, so
      they are not given a second one here at the same moment. Nothing is added
      to a page that has no action in it.
 
-     To retime anything, change `at`. To move a set of lines, change x/y.
-     Nothing else here needs touching. */
+     To retime anything, change `at`. To move a burst or a set of lines,
+     change x/y. Nothing else here needs touching. */
   const Beats = (() => {
     const ART = "assets/pop/";
 
@@ -1046,14 +1104,9 @@
           const life   = o.life   || 620;
           const gap    = o.gap    == null ? 70 : o.gap;
           const arc    = o.arc    || 84;
-          /* White, with a dark edge added in CSS — see .mline. Plain white
-             would vanish over most of this book: sampled behind the strokes,
-             the artwork runs to luminance 188 on the bicycle dust, 195 on the
-             samosa haze and 216 on the whitewashed wall. `tone: "dark"` is
-             still there for anywhere white turns out to be wrong. */
-          const colour = o.tone === "dark"
-            ? "rgba(58, 40, 22, .5)"
-            : "rgba(255, 253, 248, .92)";
+          const colour = o.tone === "light"
+            ? "rgba(255, 252, 244, .82)"
+            : "rgba(58, 40, 22, .5)";
 
           for (let i = 0; i < n; i++) {
             /* where this stroke sits, and which way it points */
@@ -1064,7 +1117,7 @@
               /* fanned out of the point, each stroke pushed clear of it */
               ang = dir + (n > 1 ? mid * (arc / (n - 1)) : 0);
               const r = ang * Math.PI / 180;
-              const reach = len * 0.66;
+              const reach = len * 0.62;
               ax = o.x + Math.cos(r) * reach;
               ay = o.y + Math.sin(r) * reach * ASPECT;
             } else {
@@ -1075,8 +1128,7 @@
             }
 
             const el = document.createElement("i");
-            /* a burst stroke is tapered the other way: see .mline--out */
-            el.className = o.burst ? "mline mline--out" : "mline";
+            el.className = "mline";
             el.style.setProperty("--mx", ax);
             el.style.setProperty("--my", ay);
             el.style.setProperty("--ml", len * (o.burst ? 0.78 : 1));
@@ -1112,19 +1164,77 @@
        off. Its two sounds are triggered by the entrance itself, in Cover.play.
 
        THE SNEEZE, on all five pages it happens on. It is the event the book is
-       named after and it was the one thing never drawn: the lettering already
-       existed in assets/pop/sneeze.webp and nothing played it.
+       named after and it was the one thing never drawn.
 
-       Each is placed on the boy's face, measured off each painting rather than
-       repeated, because he stands somewhere different on every one — page 3
-       centre-left, page 6 in the air, page 9 over by the stall. Each sits a
-       little ABOVE the face centre so the burst takes his hair and forehead and
-       the scrunched-up mouth still reads under it; dead-centred on the face it
-       covers the best drawing on the page.
+       TWO KINDS OF LETTERING, AND THE PAGE DECIDES WHICH.
 
-       And each fires on the BURST rather than on the halting "आ… आ…" that leads
-       into it, and lives 1000ms — long enough to land, short enough to stay a
-       sneeze rather than becoming a caption. */
+       `word:` is type — the story's own face in the sneeze's own red, outlined
+       so it holds over sky or sand. See .popart__word in style.css. It is what
+       the sneeze uses on all five of its pages, because a sneeze happens beside
+       his face and a starburst there covers the best drawing on the page.
+
+       `art:` is the supplied comic starburst, from assets/pop/. Three of them
+       are in the book: crash (धड़ाम!) on page 11, tub (टप्प) on page 9, splash
+       (छपाक!) on page 8. Every one of those is a thing hitting something, not a
+       person doing something, and each has a wide piece of empty floor, haze or
+       wall to land on — which is what a starburst needs and what a sneeze on a
+       face has not got. sneeze.webp and ring.webp are the two left over; naming
+       either in place of a `word:` puts it back.
+
+       A starburst has to be set MUCH larger than type reading the same word,
+       because most of its width is the burst around the letters rather than the
+       letters: crash at w:20 has lettering about 11% of the picture wide, which
+       is smaller than the type it replaced at the same number. w:28–32 is where
+       the three of them read.
+
+       IT COMES OUT OF HIS MOUTH. Not off it — none of these is on his face,
+       which is what was wrong with the starbursts: at 20% of the picture wide
+       one is a third of its height, and on all five pages it covered the head
+       outright, the best drawing on the page and the one thing a child watching
+       a sneeze is looking at. But nor is it parked in whatever corner of sky
+       happened to be empty, which is where they went next: a noise that starts
+       at the top-left of the picture while the boy sneezes in the middle of it
+       is a caption about a sneeze rather than the sneeze.
+
+       So each is measured off its own painting to the nearest clear ground at
+       mouth height, on the side he is facing: page 3 into the flour haze right
+       of his mouth, page 8 into the haze between him and the far stall, page 9
+       and page 11 to his left, since on those two he faces left. Page 6 is the
+       one exception and has to be — he is horizontal in mid-air with his own
+       hand where the word wants to be, so it goes to the open sky ahead of him,
+       which is at least the direction the sneeze threw him. He stands somewhere
+       different on every page, so nothing here is repeated from a template.
+
+       They are all w:14 now, a good deal smaller than the 17–24 they were.
+       Lettering that has moved next to his face has to be small enough to sit
+       there without becoming the picture.
+
+       The words are short — "आ… छीं!" and not the full halting line — because
+       lettering has to be taken in at a glance, and because a short word fits
+       in gaps a long one does not.
+
+       AND IT IS SAID IN TWO PIECES, because a sneeze is in two pieces. "आ…"
+       is thrown on when she catches her breath, "छीं!" lands beside it when it
+       goes, and then the two of them leave together on one frame — see the
+       piece-by-piece animation in Beats.burst. One word arriving whole on the
+       burst has to choose between the catch and the sneeze and can only be on
+       time for one of them; this is on time for both.
+
+       The two moments are measured off each clip rather than guessed, the same
+       way every other cue here was: 25ms RMS windows over each recording, read
+       for where the run of speech starts and stops. The catch, then the sneeze:
+       page 3 at 8.75 → 9.30, page 6 at 3.30 → 4.55, page 8 at 8.90 → 9.62,
+       page 9 at 4.95 → 5.45, page 11 at 3.35 → 4.15. Page 6 is the drawn-out
+       one at 1.25s between them and page 9 the quickest at 0.50s, which is the
+       reading, not a rounding — `gap` carries that difference per page.
+
+       life is 1400ms now rather than 1000. Under the old number the finished
+       phrase was whole for 320ms, which was right when the whole phrase
+       arrived at once; with the pieces landing a beat apart, 320ms of both
+       being up before both go is not enough to read as one thing. 1400 leaves
+       720ms — still a beat, not a caption.
+
+    */
     const CUES = {
       /* 2 · an empty courtyard, Aaru alone on the step. Nothing moves, so
          the only thing to give it is the air. */
@@ -1146,8 +1256,9 @@
          beat, not a collision — and the 0.95s of it finishes at 14.55, which
          is inside the 1.2s this page holds for after its clip before turning
          itself. So it is heard whole, and nothing cuts it off. */
-      3: [{ at: 9.30,
-            lines: { x: 44, y: 45, dir: -20, n: 3, len: 9, burst: true, arc: 50, life: 480 } },
+      3: [{ at: 8.75, word: ["आ…", "छीं!"], gap: 0.55, life: 1400, x: 55, y: 49, w: 14 },
+          { at: 9.30,
+            lines: { x: 44, y: 40, dir: -142, n: 4, len: 7.5, burst: true, arc: 74, life: 480 } },
           { at: 10.10, sfx: "puff",
             lines: { x: 60, y: 52, dir: -34, n: 3, len: 11, spread: 2.6, life: 700 } },
           { at: 13.60, sfx: "plate" }],
@@ -1160,22 +1271,49 @@
             lines: { x: 66, y: 12, dir: -90, n: 2, len: 4.5, spread: 3.2, life: 460 } }],
 
       /* 5 · he sets off on the bicycle. Speed lines trail behind the back
-         wheel; the bell already has its own sound and its own lettering.
+         wheel; the bell has its own sound and its own lettering.
 
          `cycle` is the one cue that is a BED rather than an accent: 8.2s of
          wheels on road, running from the moment he pushes off and fading as he
          arrives, so the bell rings into quiet. It replaced a synthesised gust,
          which said "something moved" where the picture says "a bicycle". It is
          the quietest thing in the book at 18 dB under her voice — a page you
-         notice is not silent rather than a page with a sound effect on it. */
+         notice is not silent rather than a page with a sound effect on it.
+
+         THE BELL RINGS TWICE, AND ON HER VOICE. Both of those were wrong.
+
+         It was one "ट्रिन-ट्रिन!" at 8.95s. This clip is 11.02s long but the
+         narration is only the first 7.07s of it — the rest is the ting-ting
+         appended to the cut — so 8.95s put the lettering out in the sound
+         effect, roughly two seconds after the reader had heard the last word
+         and while nothing on the page was being told. Measured against silence
+         it looked correctly placed; measured against the voice it arrived after
+         the page had finished speaking.
+
+         So it starts inside her last phrase — "…बाज़ार की ओर चल पड़ा", the run
+         from 6.13s to 7.07s, which is the moment the sentence sets him off —
+         and holds through the first real ting at 7.37s. The words bring the
+         bell up, the bell sound then lands under lettering already on screen,
+         and no part of it happens in the dead patch between the two.
+
+         Two of them, 0.34s apart and 1500ms long, so the second arrives while
+         the first is still up: at any moment in the middle of it both are on
+         the picture, stacked down and to the right, the way the artwork draws
+         a bell being rung twice rather than a bell being named once.
+
+         Gold, not the sneeze's red — see `ink` in Beats.burst. */
       5: [{ at: 0.40, sfx: "cycle",
-            lines: { x: 17, y: 58, dir: 178, n: 3, len: 13, spread: 3, life: 760 } }],
+            lines: { x: 17, y: 58, dir: 178, n: 3, len: 13, spread: 3, life: 760 } },
+          { word: "ट्रिन-ट्रिन", at: 6.45, life: 1500, x: 53, y: 48, w: 12,
+            ink: "var(--gold)" },
+          { word: "ट्रिन-ट्रिन", at: 6.79, life: 1500, x: 57, y: 57, w: 13,
+            ink: "var(--gold)" }],
 
       /* 6 · the sneeze throws him off the bicycle. Lines off his face, then
          the flight, then the landing — this page has no mixed-in sound of
          its own, so the impact is made here. */
-      6: [{ at: 3.30,
-            lines: { x: 66, y: 32, dir: 26, n: 3, len: 9, burst: true, arc: 50, life: 470 } },
+      6: [{ at: 3.30, word: ["आ…", "छीं!"], gap: 1.25, life: 1400, x: 85, y: 25, w: 14,
+            lines: { x: 62, y: 26, dir: 34, n: 4, len: 7, burst: true, arc: 70, life: 470 } },
           { at: 5.35, sfx: "whoosh",
             lines: { x: 42, y: 30, dir: 150, n: 3, len: 12, spread: 2.8, life: 720 } },
           { at: 8.20, sfx: "crash",
@@ -1196,16 +1334,25 @@
 
       /* 8 · the sneeze at the juice stall, and the glass going over. The
          splash is already mixed into the recording. */
-      8: [{ at: 9.65,
-            lines: { x: 40, y: 46, dir: 24, n: 3, len: 8.5, burst: true, arc: 50, life: 470 } },
+      8: [{ at: 8.90, word: ["आ…", "छीं!"], gap: 0.72, life: 1400, x: 55, y: 49, w: 14 },
+          { at: 9.65,
+            lines: { x: 38, y: 34, dir: 20, n: 4, len: 7, burst: true, arc: 68, life: 470 } },
+          /* the juice going over, on her word for it. "छपाक" is 13.45–14.20 in
+             this clip: the छ is a sibilant spike at 13.45–13.60, then the vowel,
+             then the stop and the क released at 14.00. The splash it names is
+             the appended sound at 14.85 and the water lines below stay with
+             that — the lettering says the noise, the lines are the juice. */
+          { art: "splash", at: 13.45, out: 14.20, x: 64, y: 64, w: 23 },
           { at: 14.90,
             lines: { x: 52, y: 74, dir: 90, n: 3, len: 6, spread: 2.2, life: 560 } }],
 
       /* 9 · the sneeze, the samosa hitting the ground, and the dog away with
          it. The lettering is already here; the plop is not. */
-      9: [{ at: 5.45,
-            lines: { x: 66, y: 54, dir: 172, n: 3, len: 8.5, burst: true, arc: 50, life: 450 } },
-          { at: 7.75, sfx: "plop",
+      9: [{ at: 4.95, word: ["आ…", "छीं!"], gap: 0.50, life: 1400, x: 59, y: 50, w: 14 },
+          { at: 5.45,
+            lines: { x: 62, y: 40, dir: 12, n: 4, len: 6.5, burst: true, arc: 66, life: 450 } },
+          { art: "tub", at: 7.75, out: 7.90, x: 38, y: 56, w: 28,
+            sfx: "plop",
             lines: { x: 56, y: 74, dir: 90, n: 2, len: 5, spread: 1.8, life: 480 } },
           /* the dog making off with it. The chewing sits under "और कुत्ता झट से
              चट कर गया" rather than after it — he is eating while she says so —
@@ -1222,25 +1369,30 @@
          mother is at 6.85, well clear of them. */
       10: [{ at: 0.30, sfx: "steps" },
            { at: 6.85, sfx: "chime",
-             lines: { x: 15, y: 40, dir: -90, n: 3, len: 5, burst: true, arc: 120, life: 620 } }],
+             lines: { x: 15, y: 40, dir: -90, n: 3, len: 5, burst: true, arc: 120, life: 620,
+                      tone: "light" } }],
 
       /* 11 · the sneeze, then everything on the shelves comes down. The big
          clatter is mixed into the recording at 8.05, so what is added here is
          the first slip of metal a moment before it. */
-      11: [{ at: 3.40,
-             lines: { x: 64, y: 50, dir: 14, n: 3, len: 9, burst: true, arc: 50, life: 470 } },
+      11: [{ at: 3.35, word: ["आ…", "छीं!"], gap: 0.80, life: 1400, x: 46, y: 53, w: 14 },
+           { at: 3.40,
+             lines: { x: 74, y: 30, dir: 8, n: 4, len: 7, burst: true, arc: 72, life: 470 } },
            { at: 6.25, sfx: "settle",
-             lines: { x: 86, y: 62, dir: 90, n: 3, len: 6.5, spread: 2.6, life: 600 } }],
+             lines: { x: 86, y: 62, dir: 90, n: 3, len: 6.5, spread: 2.6, life: 600 } },
+           { art: "crash", at: 7.20, out: 8.70, x: 26, y: 70, w: 32 }],
 
       /* 12 · she gathers the pots up, and finds the locket she lost. */
       12: [{ at: 0.50, sfx: "settle",
              lines: { x: 32, y: 76, dir: -70, n: 2, len: 5.5, spread: 2, life: 520 } },
            { at: 6.80, sfx: "chime",
-             lines: { x: 10, y: 84, dir: -90, n: 3, len: 4.5, burst: true, arc: 130, life: 700 } }],
+             lines: { x: 10, y: 84, dir: -90, n: 3, len: 4.5, burst: true, arc: 130, life: 700,
+                      tone: "light" } }],
 
       /* 13 · she holds the locket up, laughing, and Aaru laughs too. */
       13: [{ at: 0.30, sfx: "chime",
-             lines: { x: 11, y: 40, dir: -90, n: 3, len: 4.5, burst: true, arc: 124, life: 700 } }],
+             lines: { x: 11, y: 40, dir: -90, n: 3, len: 4.5, burst: true, arc: 124, life: 700,
+                      tone: "light" } }],
 
       /* The film keeps its own soundtrack and its own cue list. Nobody has
          supplied timings for it and its spoken lines are written down nowhere
@@ -1256,7 +1408,7 @@
        shape is stated up front, and each preload below corrects it from the
        real file in case an asset is ever re-exported at another size. */
     const shape = { ring: 1100 / 1011, tub: 1100 / 686, crash: 1100 / 686,
-                    sneeze: 1100 / 1047 };
+                    sneeze: 1100 / 1047, splash: 1100 / 1047 };
 
     let layer   = null;
     let media   = null;   /* the element whose playhead we are following */
@@ -1272,22 +1424,64 @@
       if (l) l.replaceChildren();
     }
 
-    /* one comic burst; each removes only itself, so two close together never
-       cancel one another out */
+    /* one burst of lettering; each removes only itself, so two close together
+       never cancel one another out.
+
+       TWO KINDS, one animation. `word` is type set in the story's own hand and
+       is what every cue uses now; `art` is one of the supplied pop-art images
+       and is kept working because the mechanism is worth keeping — any picture
+       can still be thrown onto any page by naming it. Everything below the
+       element itself is shared, so the two can never drift apart. */
     function burst(cue) {
       const l = host();
       if (!l) return;
 
-      const img = document.createElement("img");
-      img.className = "popart__item";
-      img.src = ART + cue.art + ".webp";
-      img.alt = "";
-      img.draggable = false;
-      img.decoding = "async";
+      /* A word given as an array is said a piece at a time. See `gap` below. */
+      const parts = Array.isArray(cue.word) ? cue.word : null;
+      const gapMs = Math.round((cue.gap || 0) * 1000);
+      const pieces = [];
+
+      let img;
+      if (cue.word) {
+        img = document.createElement("div");
+        img.className = "popart__word";
+        if (parts) {
+          /* Each piece is its own inline-block so it can be thrown in on its
+             own beat. They are laid out together from the start, with a real
+             space between them, so the line is set exactly as the one-string
+             version of it — which means a piece still to come is already
+             holding its place, invisible, and the pieces already there never
+             shift to make room for it. The word is composed, then revealed;
+             it does not assemble itself sideways in front of the reader. */
+          parts.forEach((text, i) => {
+            if (i) img.appendChild(document.createTextNode(" "));
+            const s = document.createElement("i");
+            s.textContent = text;
+            img.appendChild(s);
+            pieces.push(s);
+          });
+        } else {
+          img.textContent = cue.word;
+        }
+        /* `ink` overrides the lettering's colour for this one burst. The book
+           has one lettering red and wants it — five sneezes in five different
+           colours would be five different books — but the bell is not a sneeze,
+           and a bicycle bell rung in the sneeze's red says the wrong thing
+           about what is happening. Anything that names a colour works; the
+           tokens in style.css §1 are what it is for. */
+        if (cue.ink) img.style.setProperty("--pop-ink", cue.ink);
+      } else {
+        img = document.createElement("img");
+        img.className = "popart__item";
+        img.src = ART + cue.art + ".webp";
+        img.alt = "";
+        img.draggable = false;
+        img.decoding = "async";
+        if (shape[cue.art]) img.style.aspectRatio = String(shape[cue.art]);
+      }
       img.style.setProperty("--px", cue.x);
       img.style.setProperty("--py", cue.y);
       img.style.setProperty("--pw", cue.w);
-      if (shape[cue.art]) img.style.aspectRatio = String(shape[cue.art]);
       l.appendChild(img);
 
       /* `life` sets the whole thing end to end, in ms, for a burst that should
@@ -1297,10 +1491,17 @@
 
          Without it the hold is as long as the sound it belongs to, floored at
          MIN_HOLD, which is what the lettering bursts want: those name a noise
-         and have to stay long enough to be read. */
+         and have to stay long enough to be read.
+
+         `gap` is what the pieces wait for each other by, in seconds, and it is
+         ADDED to `life` rather than taken out of it. So `life` goes on meaning
+         the same thing it means everywhere else — how long the finished word is
+         on the picture — and a page can be re-timed to the recording by moving
+         `gap` alone, without the last piece losing its beat as a side effect. */
+      const spread = parts ? (parts.length - 1) * gapMs : 0;
       const total = cue.life
-        ? Math.max(POP_IN + POP_OUT + 60, cue.life)
-        : POP_IN + Math.max(MIN_HOLD, (cue.out || cue.at) - cue.at) * 1000 + POP_OUT;
+        ? spread + Math.max(POP_IN + POP_OUT + 60, cue.life)
+        : spread + POP_IN + Math.max(MIN_HOLD, (cue.out || cue.at) - cue.at) * 1000 + POP_OUT;
       const hold  = total - POP_IN - POP_OUT;
       const at    = (ms) => ms / total;
       const T     = (s, r) => "translate(-50%, -50%) scale(" + s + ") rotate(" + r + "deg)";
@@ -1326,7 +1527,51 @@
            { offset: 1,                 transform: T(0.52, -5),
              opacity: 0 }];
 
-      const a = img.animate(frames, { duration: total, fill: "both" });
+      /* ── ONE WORD, SAID A PIECE AT A TIME, TAKEN AWAY WHOLE ──────────────
+         "आ… छीं!" is not one noise. It is the catch and then the sneeze, and
+         the recording says them a beat apart, so the lettering does too: "आ…"
+         is thrown on, it waits, and "छीं!" lands beside it.
+
+         What it must not do is leave the same way. Two pieces shrinking away
+         one after the other reads as two separate captions being cleared, and
+         it also means the phrase is only ever whole for the length of one gap.
+         So the throw-in belongs to the PIECES and the exit belongs to the WORD:
+         each piece runs the entrance on its own delay, while the element that
+         holds them runs the hold and the shrink-away once, for all of them.
+         Both of them go on the same frame, which is what the sneeze finishing
+         looks like.
+
+         The pieces' entrance is the same overshoot-and-settle as the one-piece
+         version, minus the centring translate, which belongs to the element
+         they sit in and would fight it here. Same beats, same curves. */
+      const anims = [];
+      if (parts) {
+        const S = (s, r) => "scale(" + s + ") rotate(" + r + "deg)";
+        const enter = calm()
+          ? [{ transform: S(1, 0), opacity: 0 },
+             { transform: S(1, 0), opacity: 1 }]
+          : [{ transform: S(0.30, -9), opacity: 0, easing: "cubic-bezier(.16,.9,.28,1.3)" },
+             { offset: 0.46, transform: S(1.14, 2.4), opacity: 1, easing: "cubic-bezier(.36,0,.4,1)" },
+             { offset: 0.74, transform: S(0.955, -1.4), opacity: 1, easing: "cubic-bezier(.3,0,.2,1)" },
+             { offset: 1, transform: S(1, 0), opacity: 1 }];
+        pieces.forEach((s, i) => {
+          anims.push(s.animate(enter,
+            { duration: POP_IN, delay: i * gapMs, fill: "both" }));
+        });
+        /* the element itself only waits and then leaves — no entrance, or it
+           would throw the pieces in a second time underneath their own */
+        anims.push(img.animate(
+          [{ offset: 0, transform: T(1, 0), opacity: 1 },
+           { offset: at(total - POP_OUT), transform: T(1, 0), opacity: 1,
+             easing: "cubic-bezier(.5,0,.78,.1)" },
+           { offset: 1, transform: T(0.52, -5), opacity: 0 }],
+          { duration: total, fill: "both" }));
+      } else {
+        anims.push(img.animate(frames, { duration: total, fill: "both" }));
+      }
+
+      /* the last one to finish is the whole word's own, in both shapes */
+      const a = anims[anims.length - 1];
       const gone = () => img.remove();
       a.finished.then(gone, gone);
     }
@@ -1335,7 +1580,7 @@
     function fire(cue) {
       if (cue.sfx)   Sfx.play(cue.sfx);
       if (cue.lines) Lines.draw(host(), cue.lines);
-      if (cue.art)   burst(cue);
+      if (cue.art || cue.word) burst(cue);
     }
 
     /* Cues fire on the playhead *crossing* them, never on a one-time flag —
@@ -2010,6 +2255,7 @@
       if (!on) return;
       on = false;
       Music.stop();             /* out of the story, out of the music */
+      TitleVO.stop();           /* and the title stops mid-word rather than turning the page after them */
       flip(() => root.classList.remove("is-play"));
       bar.inert = false;
       listen(false);
@@ -2797,7 +3043,13 @@
 
     const HandHint = (() => {
       const el = $("#handHint");
-      const WAIT = 4200;                  /* long enough not to nag a reader */
+      /* Nine seconds of stillness before the hand appears. It was 4.2s, which
+         is quick enough to arrive while a child is still looking at the
+         picture and deciding — and a hand that taps at someone who has not
+         finished looking is nagging them rather than helping. The only place
+         it shows now is the title page, where the one thing to do is press
+         Play, so there is no hurry to say so. */
+      const WAIT = 9000;
       let timer = 0;
 
       /* what the reader is waiting to be told to press, if anything */
@@ -2948,19 +3200,38 @@
          quietly while the reader was still looking at the title. The page
          counts as unheard again from this moment, so Forward goes away until
          the page has played itself out. */
+      /* ── the title's line, then the turn ────────────────────────────────
+         The book stays on the cover while the title speaks. The reader has
+         just pressed the thing painted on that picture and the answer to the
+         press is being said out loud, so turning underneath it would talk over
+         the very page the words belong to. When the line ends — or turns out
+         not to be there at all — the book goes on to the first painted page,
+         which is what pressing play meant.
+
+         The cover's entrance is deliberately not replayed here: they have been
+         looking at the title all along and have already seen Aaru ride in.
+
+         Nobody is trapped waiting on it. The forward arrow is open on the
+         title, and taking it stops the line — see the Book.onChange hook in
+         start(), which is also what makes carrying the title's voice over onto
+         page one impossible. */
+      const openStory = () => {
+        /* read-aloud switched off means the book does not speak at all, so
+           there is nothing to wait for: the old straight-to-page-one */
+        if (!PageAudio.on) { Book.jump(FIRST); return; }
+        TitleVO.play(() => {
+          /* they may have gone on by themselves, or left the story, while it
+             was speaking — either way the turn is no longer ours to make */
+          if (Book.index === 0 && PlayMode.on) Book.jump(FIRST);
+        });
+      };
+
       const play = () => {
         PlayMode.enter();
-        /* Straight to the first painted page. The reader has been looking at
-           the title all along and has just pressed the thing on it, so playing
-           its entrance again at them is showing them what they have already
-           seen and answering their press with a wait — 2.6s of it, since a page
-           with no words to say gets the longer beat before it turns itself.
-           The turn carries them off the cover instead, which is what pressing
-           it meant.
-
-           From anywhere else — the panel can put a reader back mid-story and
-           they may press Play again — it still means "this page, from the top". */
-        if (Book.index === 0) Book.jump(FIRST);
+        /* From anywhere but the cover — the panel can put a reader back
+           mid-story and they may press Play again — it still means "this page,
+           from the top". */
+        if (Book.index === 0) openStory();
         else { heard.delete(Book.index); sync(Book.index, Book.total); Book.present(); }
       };
 
@@ -3044,6 +3315,13 @@
           sounded = i;
           Beats.sfx("page");
         });
+
+        /* The title's line belongs to the title page. Leaving that page — by
+           the arrow, a swipe, the keyboard, the jump panel, or by the line's
+           own ending turning it — ends the line rather than letting it play on
+           over the next picture. Registered on the same signal as the page
+           sound so it cannot be missed by one of the ways out. */
+        Book.onChange(() => TitleVO.stop());
 
         /* the only thing that opens the way forward */
         Book.onReady((i) => {

@@ -26,6 +26,13 @@
   --teal:       #3d8a86;
   --sky:        #bcdcec;
 
+  /* The sneeze's own red. The lettering is the one thing in the book that is
+     not narration and must not read as narration, so it is the one thing not
+     set in --ink. It is a hot vermillion — hotter and more saturated than the
+     --terracotta of his shirt, so it sits in the same family as the painting
+     without being mistaken for part of it. One line to tune. */
+  --pop-ink:  #e0432a;
+
   /* controls */
   --btn:      #241a12;
   --btn-hi:   #3b2a1e;
@@ -265,7 +272,18 @@ button { font: inherit; color: inherit; }
      that points at it. cqw is 1% of the picture's width, so the button keeps
      its proportion to the artwork at every screen size. */
   --start: clamp(84px, 12cqw, 168px);
-  --start-right: 5%;
+  /* THE BUTTON SITS UNDER THE TITLE, which is what this number is for. It is
+     the gap from the picture's right edge, so bigger moves the button left.
+
+     Measured on the cover: the title "आरु की छींक" spans 59%-97% of the picture
+     and so centres at 78%. 5% left the button at 89% across, tucked into the
+     corner well right of the words; 16% puts its centre at 78.1%, under them.
+     It stays clear of the bicycle, which ends around 55%.
+
+     The idle hand reads this same token, so it follows the button instead of
+     drifting off it — which is the whole reason the number lives here on the
+     shared parent rather than on the button itself. */
+  --start-right: 16%;
   --start-bottom: 10.5%;  /* still clear enough for the hand to tap from below */
 
   /* how far the hand is, and how big */
@@ -1400,6 +1418,91 @@ button { font: inherit; color: inherit; }
 }
 
 
+/* LETTERING IN THE BOOK'S OWN HAND, which is what replaced the comic bursts.
+
+   The supplied pop-art was five loud starbursts — purple, red, yellow — laid
+   over watercolour paintings in cream and brown. They read as stickers from
+   another book, and they were big enough to have to be put somewhere, which is
+   how they ended up over the boy's face.
+
+   So the lettering is now type, not a picture: the story's own Baloo Bhai 2 at
+   its heaviest, outlined in near-white so it holds up over sky, sand or a mud
+   wall. Being type it is crisp at any size, it needs no asset, and it is a
+   third the height of the starburst it replaces, which is what let every one
+   of them move off a face.
+
+   IT IS RED, NOT THE STORY'S BROWN. It was brown at first, on the reasoning
+   that the narration is brown and the book should speak in one ink. That is
+   the argument against it: set in --ink beside narration also set in --ink, a
+   sneeze looks like another sentence, and the one thing on the page that is a
+   noise rather than a telling reads as the quietest thing on it. --pop-ink is
+   the whole of the difference, and the outline is what lets a hot colour sit
+   on a watercolour without either of them tearing.
+
+   paint-order puts the stroke BEHIND the fill. Without it the outline is
+   painted over the letter and eats half the stem weight, and the word turns
+   from red-with-a-halo into a thin red outline.
+
+   --px/--py place its centre and --pw sets the width it fills, exactly as for
+   the image bursts, so the cue table did not have to learn anything new. The
+   type size is derived from --pw rather than set beside it, so a burst cannot
+   be resized in one dimension and not the other.
+   ------------------------------------------------------------------------- */
+.popart__word {
+  position: absolute;
+  left: calc(var(--px, 50) * 1%);
+  top:  calc(var(--py, 50) * 1%);
+  width: calc(var(--pw, 22) * 1cqw);
+  /* the resting transform; every keyframe repeats the centring translate */
+  transform: translate(-50%, -50%) scale(.3);
+  opacity: 0;
+  will-change: transform, opacity;
+  pointer-events: none;
+
+  font-family: var(--font);
+  font-weight: 800;
+  font-size: calc(var(--pw, 22) * .295cqw);
+  line-height: 1.02;
+  letter-spacing: -.012em;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--pop-ink);
+
+  -webkit-text-stroke: calc(var(--pw, 22) * .0235cqw) #fffdf4;
+  paint-order: stroke fill;        /* outline behind the letter, not over it */
+  /* lifts the word off the painting so it reads as laid on top of it */
+  filter: drop-shadow(0 .32cqw .55cqw rgba(38, 22, 8, .42));
+  user-select: none; -webkit-user-drag: none;
+}
+
+/* A word said a piece at a time — "आ…" and then "छीं!" — is built out of these.
+   script.js throws each one in on its own beat and then takes the whole line
+   away in one go, so what is animated here is the piece, not the line.
+
+   inline-block, because a transform does nothing to a plain inline box: the
+   scale and the rotate of the throw-in would both be silently dropped and the
+   pieces would simply appear. font-style is reset because <i> is the shortest
+   tag that will hold one, and its italics are not wanted — this is a container,
+   not an emphasis.
+
+   No transform-origin is set, so each piece scales about its own centre and the
+   line does not shuffle sideways as the pieces land. */
+.popart__word > i {
+  display: inline-block;
+  font-style: normal;
+}
+
+/* NO SPEED ARCS OFF THE CORNER. There were three concentric brown ones flying
+   off the word's top-left, borrowed from the supplied lettering, on the
+   reasoning that something had to say "this is a noise" once the starburst
+   around the word was gone. The red says it, and says it without spending
+   another 7% of the picture's width to do so — the arcs put a second mark on
+   the page for a job the first mark was already doing.
+
+   The motion strokes below are the ones that stayed: they come off his face on
+   the burst, which is a different thing from decorating the lettering. */
+
+
 /* The motion strokes share this layer. A stroke is a thin bar with its colour
    fading out at both ends, so it reads as tapered without needing an SVG; the
    rotation, the travel and the fade are all one transform and one opacity in
@@ -1577,28 +1680,3 @@ button { font: inherit; color: inherit; }
    To bring the words back, delete this block.
    ------------------------------------------------------------------------- */
 .scene__text, .caption { display: none; }
-
-/* A BURST STROKE TAPERS OUTWARD, where a travelling one fades at both ends.
-   The difference matters: a streak that follows a moving thing is strongest in
-   its middle, but a line thrown out of a sneeze is strongest where it leaves
-   the mouth and dies as it goes. Faded at both ends it read as a dash floating
-   near his face rather than as something coming out of him.
-
-   The stroke's local +x always points away from the burst point (that is the
-   direction `translate(travel%, 0)` moves it in), so 0% here is the inner end. */
-.mline--out {
-  background: linear-gradient(90deg,
-              var(--mc) 0%, var(--mc) 42%, transparent 100%);
-}
-
-/* THE DARK EDGE UNDER A WHITE STROKE, and why a white line needs one here.
-   These sit on painted artwork, not on a flat ground, and sampled directly
-   behind them the paintings run pale: luminance 188 in the bicycle's dust, 195
-   in the haze by the samosa stall, 216 on the whitewashed wall of the kitchen.
-   A plain white stroke is invisible on all three. The edge is what lets one
-   colour work over sky, sand, whitewash and a dark doorway alike — which is
-   how white speed lines have always been drawn over pictures.
-
-   Tight on purpose: the strokes are three or four pixels thick, so a 1.6px
-   shadow is an edge rather than a glow. */
-.mline { filter: drop-shadow(0 0 1.6px rgba(52, 36, 20, .58)); }
