@@ -2043,12 +2043,38 @@
     }
 
     return {
-      build(page) {
+      /* ── built in two halves, and the halves happen at different times ────
+         Making the scenery is the expensive half: every mote is an element
+         with six custom properties written onto it, so a page with forty of
+         them is a couple of hundred style writes. Putting it in is the cheap
+         half — two replaceChildren of nodes that already exist.
+
+         They used to happen together, at the midpoint of the page turn, which
+         is the one moment in the book that can least afford it: the turn is
+         mid-flight, and a few hundred style writes on the main thread is a
+         dropped frame you can see. So the making now happens before the turn
+         starts, while nothing is moving, and only the putting-in waits for the
+         midpoint — which is where it has to be, because that is when the
+         picture underneath changes and the sparkles are pinned to it.
+
+         prepare() touches no live node, so it costs no layout. */
+      prepare(page) {
         const quiet = calm();
-        /* in calm mode only the pinned sparkles survive, and slowly */
-        host.dust.replaceChildren(...(quiet ? [] : [dust(page.dust || 0)]));
-        host.sparks.replaceChildren(pinned(page));
-      }
+        return {
+          /* in calm mode only the pinned sparkles survive, and slowly */
+          dust:   quiet ? null : dust(page.dust || 0),
+          sparks: pinned(page)
+        };
+      },
+
+      commit(made) {
+        if (!made) return;
+        host.dust.replaceChildren(...(made.dust ? [made.dust] : []));
+        host.sparks.replaceChildren(made.sparks);
+      },
+
+      /* both halves at once, for the callers with no turn to hide behind */
+      build(page) { this.commit(this.prepare(page)); }
     };
   })();
 
@@ -2115,6 +2141,13 @@
       Beats.bind(index + 1);    /* this page's bursts, motion lines and sounds */
     }
 
+    /* FETCHED IS NOT READY. An <img> whose bytes are in the cache still has to
+       be turned into a bitmap, and if that has not happened by the time the
+       picture is shown, the decode lands on the main thread at the exact frame
+       the turn begins — which is the frame it can least afford. decode() does
+       that work now, off the critical path, so the incoming page is a finished
+       bitmap before anything moves. Failure is not a problem: a picture that
+       will not decode early will decode when it is drawn, exactly as before. */
     function preload(i) {
       const p = PAGES[i];
       if (!p) return;
@@ -2126,8 +2159,15 @@
         const im = new Image();
         im.decoding = "async";
         im.src = u;
+        if (im.decode) im.decode().catch(() => { /* it will decode when drawn */ });
       }
     }
+
+    /* Work that has to happen, but not now: the browser is given it when it
+       has a moment rather than on the frame the turn lands. */
+    const later = window.requestIdleCallback
+      ? (fn) => window.requestIdleCallback(fn, { timeout: 600 })
+      : (fn) => setTimeout(fn, 140);
 
     /* the entrance only looks right once the cut-outs can actually be drawn */
     function waitForLayers(layers) {
@@ -2207,6 +2247,11 @@
       index = target;          /* button states update at once */
       emit();
       PageAudio.stop();        /* the leaving page goes silent at once */
+
+      /* The scenery for the page we are going to, made here and put in at the
+         midpoint. Everything expensive about it happens in this line, before
+         a single frame of the turn has been committed. */
+      const scenery = Ambience.prepare(page);
 
       paint(inn, arts[1 - live], page);
       inn.removeAttribute("aria-hidden");
@@ -2316,10 +2361,11 @@
         ], { duration: D, easing: "ease-in-out" });
       }
 
-      /* text and scenery change over at the midpoint of the turn */
+      /* text and scenery change over at the midpoint of the turn — and by now
+         the scenery is only being put in, not made */
       setTimeout(() => {
         writeCaption(page);
-        Ambience.build(page);
+        Ambience.commit(scenery);
         caption.classList.remove("is-out");
       }, Math.round(D * 0.42));
 
@@ -2337,9 +2383,37 @@
         inn.style.zIndex = "";
         live = 1 - live;
         busy = false;
-        preload(index + 1); preload(index - 1);
         bindAudio();
-        PageAudio.play();               /* this page's clip, and only this one */
+
+        /* ── NOTHING HEAVY ON THE LANDING FRAME ─────────────────────────────
+           Three expensive things used to happen on the single frame the turn
+           came to rest: two neighbouring pages were fetched and decoded, and
+           an mp3 was handed to the decoder. All of it landed while the last
+           frames of the animation were still being drawn, and the turn ended
+           with a hitch on the frame a reader is looking straight at.
+
+           The neighbours can wait for a gap in the work — they are not needed
+           until the next turn, a page-length away. The clip only yields once,
+           because it must not be perceptibly late: a zero-delay timeout is the
+           next task rather than the next frame, which nobody hears, and it is
+           enough to let the frame commit before the decoder starts.
+
+           A TIMER RATHER THAN requestAnimationFrame, deliberately. rAF is the
+           right instrument for something visual and the wrong one for
+           something that has to happen: a browser that is not painting — a
+           hidden tab, a throttled one — simply does not call it, and the page
+           would sit there silent with its narration queued behind a frame that
+           never comes. Starting a clip is not a drawing job.
+
+           It checks the page has not moved on again in that moment, so a fast
+           reader cannot start a clip for a page they have already left. */
+        later(() => { preload(index + 1); preload(index - 1); });
+
+        const mine = index;
+        setTimeout(() => {
+          if (mine === index) PageAudio.play();   /* this page's clip, only it */
+        }, 0);
+
         awaitPresentation(playCover()); /* Aaru rides in, then the title pops */
         emit();
       };
