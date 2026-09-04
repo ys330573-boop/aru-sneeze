@@ -31,7 +31,7 @@
 <!-- bump ?v= after editing so a plain refresh never serves a cached copy -->
 <link rel="stylesheet" href="style.css?v=75" />
 <!-- the picture the book opens on, so it is on screen as early as possible -->
-<link rel="preload" as="image" href="assets/images/page-01.jpg" />
+<link rel="preload" as="image" href="assets/images/page-01.webp" />
 </head>
 
 <body>
@@ -137,7 +137,7 @@
             <!-- two stacked slots let one page turn away while the next arrives.
                  The story text lives inside the slot so it turns with its picture. -->
             <div class="slot is-active" data-slot="0">
-              <img class="slot__art" draggable="false" alt="" src="assets/images/page-01.jpg"
+              <img class="slot__art" draggable="false" alt="" src="assets/images/page-01.webp"
                    fetchpriority="high" decoding="async" />
               <!-- cut-out layers, used by the cover only: Aaru rides in, then
                    the title pops. At rest they recompose the original exactly. -->
@@ -195,7 +195,7 @@
                whatever the reader is waiting to be told to press: the play
                button on the title page, the forward arrow once a page has
                finished. It goes the moment they touch anything. -->
-          <img class="handhint" id="handHint" draggable="false" src="assets/icons/hand-tap.png"
+          <img class="handhint" id="handHint" draggable="false" src="assets/icons/hand-tap.webp"
                alt="" aria-hidden="true" />
         </div>
 
@@ -263,6 +263,6 @@
   </button>
   <div class="sr-only" id="liveHint" aria-live="polite"></div>
 
-  <script src="script.js?v=102" defer></script>
+  <script src="script.js?v=109" defer></script>
 </body>
 </html>

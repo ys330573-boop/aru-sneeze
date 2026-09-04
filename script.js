@@ -27,18 +27,18 @@
      -------------------------------------------------------------------- */
   const PAGES = [
     {
-      img: "assets/images/page-01.jpg",     /* flat fallback: needs no masks */
+      img: "assets/images/page-01.webp",     /* flat fallback: needs no masks */
       cover: true,
       /* the same picture as three layers, so Aaru can ride in and the title
          can pop. Geometry is % of the frame, measured off the artwork. */
       layers: {
-        bg: "assets/images/cover-bg.jpg",
+        bg: "assets/images/cover-bg.webp",
         hero:  { x: "5.26%",  y: "0.21%",  w: "50.36%", h: "99.79%",
-                 img:  "assets/images/cover-hero.jpg",
-                 mask: "assets/images/cover-hero-mask.png" },
+                 img:  "assets/images/cover-hero.webp",
+                 mask: "assets/images/cover-hero-mask.webp" },
         title: { x: "56.22%", y: "10.63%", w: "43.66%", h: "59.51%",
-                 img:  "assets/images/cover-title.jpg",
-                 mask: "assets/images/cover-title-mask.png" },
+                 img:  "assets/images/cover-title.webp",
+                 mask: "assets/images/cover-title-mask.webp" },
         flash: "58%"
       },
       alt: {
@@ -50,7 +50,7 @@
       puffs: [{ x: 21, y: 29, size: 16 }]
     },
     {
-      img: "assets/images/page-02.jpg",
+      img: "assets/images/page-02.webp",
       alt: {
         hi: "लाल खपरैल वाले घर की चौखट पर बैठा आरु।",
         en: "Aaru sitting on the step of a little house with a red-tiled roof."
@@ -62,7 +62,7 @@
       motion: "sway", dust: 6
     },
     {
-      img: "assets/images/page-03.jpg",
+      img: "assets/images/page-03.webp",
       alt: {
         hi: "छींक से ढक्कन उड़ जाता है और आटा आरु के ऊपर गिर जाता है।",
         en: "A sneeze sends the lid flying and covers Aaru in white flour."
@@ -75,7 +75,7 @@
       puffs: [{ x: 57, y: 42, size: 22 }]
     },
     {
-      img: "assets/images/page-04.jpg",
+      img: "assets/images/page-04.webp",
       alt: {
         hi: "आरु सँभलकर, डरते-डरते डिब्बे में झाँकता है।",
         en: "Aaru carefully peering into the tin, holding up the lid."
@@ -87,7 +87,7 @@
       dust: 5
     },
     {
-      img: "assets/images/page-05.jpg",
+      img: "assets/images/page-05.webp",
       alt: {
         hi: "आरु ख़ुशी से अपनी लाल साइकिल चला रहा है।",
         en: "Aaru riding his red bicycle happily down a dusty path."
@@ -99,7 +99,7 @@
       motion: "sway", dust: 8
     },
     {
-      img: "assets/images/page-06.jpg",
+      img: "assets/images/page-06.webp",
       alt: {
         hi: "छींक के धक्के से आरु साइकिल से हवा में उड़ जाता है।",
         en: "A sneeze throws Aaru off his bicycle and into the air."
@@ -112,7 +112,7 @@
       puffs: [{ x: 72, y: 37, size: 19 }]
     },
     {
-      img: "assets/images/page-07.jpg",
+      img: "assets/images/page-07.webp",
       alt: {
         hi: "गिरी हुई साइकिल के पास उदास खड़ा आरु।",
         en: "Aaru standing sadly beside his fallen bicycle."
@@ -124,7 +124,7 @@
       dust: 7
     },
     {
-      img: "assets/images/page-08.jpg",
+      img: "assets/images/page-08.webp",
       alt: {
         hi: "गन्ने के रस के ठेले पर छींक से आरु के हाथ से गिलास छूट जाता है।",
         en: "At the sugarcane-juice cart, a sneeze knocks the glass from Aaru's hand."
@@ -137,7 +137,7 @@
       puffs: [{ x: 45, y: 50, size: 15 }]
     },
     {
-      img: "assets/images/page-09.jpg",
+      img: "assets/images/page-09.webp",
       alt: {
         hi: "समोसे की दुकान पर छींक के बाद कुत्ता समोसा ले भागता है।",
         en: "At the samosa stall, a dog runs off with the samosa after Aaru's sneeze."
@@ -150,7 +150,7 @@
       puffs: [{ x: 66, y: 55, size: 16 }]
     },
     {
-      img: "assets/images/page-10.jpg",
+      img: "assets/images/page-10.webp",
       alt: {
         /* the artwork has no cat in it, unlike the words, so the description
            of the picture and the telling of the story part company here */
@@ -164,7 +164,7 @@
       dust: 6
     },
     {
-      img: "assets/images/page-11.jpg",
+      img: "assets/images/page-11.webp",
       alt: {
         hi: "छींक से ताक पर रखे सारे बरतन नीचे गिर जाते हैं।",
         en: "A sneeze sends every pot and pan tumbling off the shelves."
@@ -177,7 +177,7 @@
       puffs: [{ x: 70, y: 51, size: 21 }]
     },
     {
-      img: "assets/images/page-12.jpg",
+      img: "assets/images/page-12.webp",
       alt: {
         hi: "अम्मा बर्तन उठा रही हैं; कोने में खोया हुआ लॉकेट चमक रहा है।",
         en: "Amma gathering the fallen pots while the lost locket glints in the corner."
@@ -190,7 +190,7 @@
       sparks: [{ x: 9, y: 93, size: 3.4 }, { x: 6, y: 90, size: 2.2 }, { x: 12, y: 95, size: 2 }]
     },
     {
-      img: "assets/images/page-13.jpg",
+      img: "assets/images/page-13.webp",
       alt: {
         hi: "अम्मा हँसते हुए अपना लॉकेट दिखाती हैं और आरु खिलखिला उठता है।",
         en: "Amma laughing as she holds up her locket, and Aaru giggling beside her."
@@ -650,41 +650,25 @@
   })();
 
   /* ── Pop ────────────────────────────────────────────────────────────────
-     The one sound this file makes itself: a short cork-pop for the play
-     button, so a tap answers back. It is interface feedback, not part of the
-     story — PageAudio still plays nothing but the supplied recordings — and
-     it obeys the same mute switch, so silencing the book silences this too.
+     The book's one Web Audio context, and nothing else any more.
 
-     Synthesised rather than shipped as a file: it is two brief oscillators,
-     which is smaller than any mp3 of it and needs no network. The context is
-     built on the first tap, never on load, because a context created before a
-     gesture starts out suspended and stays that way in some browsers.
+     THE PLAY BUTTON HAS NO SOUND. It used to answer a press with a short
+     cork-pop — first two oscillators, later a 2KB recording — on the reasoning
+     that a tap should say something back. It is gone: the button's answer is
+     the title line that begins the moment it is pressed, and a pop in front of
+     that is one sound too many at the very start of the book.
+
+     What is left is the context itself, which was never really Pop's. It is
+     shared, because a browser gives a page a limited number of them and the
+     book only ever needs one: Sfx synthesises its fallback tones in this one.
+     It is built on the first request and never on load, because a context
+     created before a gesture starts out suspended and stays that way in some
+     browsers — so the first thing to ask for it is the first thing that needs
+     to make a sound, which is what unsuspends it.
      -------------------------------------------------------------------- */
   const Pop = (() => {
     const AC = window.AudioContext || window.webkitAudioContext;
     let ctx = null;
-
-    /* THE BUTTON'S SOUND IS A RECORDING NOW, and it is primed the moment this
-       module exists rather than fetched when the button is pressed. The whole
-       job of this sound is to answer a finger the instant it lands; a first
-       press that has to go to the network first does not do that. It is 2KB.
-
-       Levelled to peak at -9.7 dBFS, which is where the synthesised pop it
-       replaces peaked (0.34 of full scale = -9.4) — so the button sounds
-       different but not suddenly louder or quieter than before. */
-    const FILE = "assets/sfx/play.mp3?v=1";
-    let el = null;
-
-    function element() {
-      if (el) return el;
-      try {
-        el = new Audio(FILE);
-        el.preload = "auto";
-        el.load();
-      } catch { el = null; }
-      return el;
-    }
-    element();
 
     function context() {
       if (!AC) return null;
@@ -693,60 +677,11 @@
       return ctx;
     }
 
-    /* one voice: a pitch that drops fast, which is what reads as a "pop" */
-    function voice(c, at, { type, from, to, peak, len }) {
-      const g = c.createGain();
-      g.gain.setValueAtTime(0.0001, at);
-      g.gain.exponentialRampToValueAtTime(peak, at + 0.008);
-      g.gain.exponentialRampToValueAtTime(0.0001, at + len);
-      g.connect(c.destination);
-
-      const o = c.createOscillator();
-      o.type = type;
-      o.frequency.setValueAtTime(from, at);
-      o.frequency.exponentialRampToValueAtTime(to, at + len * 0.8);
-      o.connect(g);
-      o.start(at);
-      o.stop(at + len + 0.02);
-      o.onended = () => { try { o.disconnect(); g.disconnect(); } catch { /* gone */ } };
-    }
-
     return {
       /* shared so the book only ever builds one audio context: Beats's
          sound effects are synthesised in this same one. */
-      get ctx() { return context(); },
-
-      play() {
-        if (PageAudio.muted) return;
-
-        /* The supplied recording, and the two oscillators below it as the
-           fallback — the button must answer a press even if the file will not
-           load, because it is the proof to a child that the book makes sounds
-           at all.
-
-           Rewound rather than replaced on each press: the clip is 0.15s and a
-           second press inside that should cut the first off, which is what a
-           button being pressed twice actually sounds like. */
-        const a = element();
-        if (a) {
-          try { a.currentTime = 0; } catch { /* not seekable yet */ }
-          const p = a.play();
-          if (p && p.catch) p.catch(voices);
-          return;
-        }
-        voices();
-      }
+      get ctx() { return context(); }
     };
-
-    /* the cork-pop that was here before the recording, kept whole */
-    function voices() {
-      const c = context();
-      if (!c) return;                         /* no Web Audio: stay silent */
-      const t = c.currentTime + 0.001;
-      /* body of the pop, then a quieter click on top for the "cork" edge */
-      voice(c, t, { type: "sine",     from: 900,  to: 230,  peak: 0.34, len: 0.14 });
-      voice(c, t, { type: "triangle", from: 1900, to: 1100, peak: 0.08, len: 0.05 });
-    }
   })();
 
   /* ── TitleVO ────────────────────────────────────────────────────────────
@@ -874,7 +809,14 @@
      To retime anything, change `at`. To move a burst or a set of lines,
      change x/y. Nothing else here needs touching. */
   const Beats = (() => {
+    /* The starburst artwork. The ?v= is here for the same reason PageAudio
+       carries one: these filenames never change, so re-exporting a burst
+       leaves every browser that has seen the old one showing the old one
+       forever. Bump it whenever a file in assets/pop/ is replaced.
+         v2 — splash re-exported from a new छपाक (yellow lettering, square) */
+    const ART_V = 2;
     const ART = "assets/pop/";
+    const art = (name) => ART + name + ".webp?v=" + ART_V;
 
     /* Fired this much early so a burst or a stroke is at full strength *on*
        the sound rather than only starting to grow there. */
@@ -1013,7 +955,7 @@
          same when the sound behind one is replaced, and a browser will happily
          keep serving the old bytes with no error and no way to tell. Bump it
          whenever a file in assets/sfx/ is re-cut. */
-      const CUT = 3;
+      const CUT = 4;   /* v4 — paper re-made from the book's own page flip */
       const at_ = (f) => "assets/sfx/" + f + ".mp3?v=" + CUT;
       const FILES = {
         growl:  at_("growl"),
@@ -1028,7 +970,36 @@
         birds:  at_("birds"),
         plate:  at_("plate"),
         open:   at_("open"),
-        steps:  at_("steps")
+        steps:  at_("steps"),
+        /* The paper transition's own sound — the sheets flying in and away.
+           Not to be confused with `page`, which is the small flip a single
+           page turn makes; this one belongs to the whole screen going over.
+
+           IT IS MADE OF `page`. The first attempt was a supplied 5s sweep and
+           it did not belong to this book: a generic whoosh over a transition
+           whose whole idea is sheets of paper. So this one is built out of the
+           book's own page-flip — the transient at 0.62–0.88s of page.mp3, cut
+           out once and then laid down 22 times, each at its own moment, its own
+           level and its own slight pitch, so no two sheets sound alike.
+
+           The layout is the transition's own dials, not a guess: twelve sheets
+           scattered through the first 1.35s while they fly in and build, then
+           SILENCE from 1.5 to 1.95 because that is the HOLD, when the screen is
+           covered and nothing is moving, then ten more from 1.96 falling away
+           in level to 3.6 as they drift off. 3.89s against a flight of about
+           four. The hold is the part that makes it read as one movement rather
+           than as a noise: a sound that keeps rustling while the sheets are
+           still is describing something that is not happening. */
+        paper:  at_("paper"),
+        /* Aaru laughing, on the last page. Cut from the supplied recording,
+           which is 8s: the laugh itself is the first 2.3s of it and the rest
+           is a second run and then room tone, so it is trimmed to the burst
+           and faded out over its last third rather than stopping dead. */
+        laugh:  at_("laugh"),
+        /* the pots coming to rest after the fall on page 11 — a first few
+           pieces, a beat, then a longer tumble. Faded over its last quarter
+           second so it settles rather than stops. */
+        clatter: at_("clatter")
       };
 
       /* PLAYED THROUGH <audio> AND NOT THROUGH WEB AUDIO, which is the whole
@@ -1576,7 +1547,23 @@
              lines: { x: 74, y: 30, dir: 8, n: 4, len: 7, burst: true, arc: 72, life: 470 } },
            { at: 6.25, sfx: "settle",
              lines: { x: 86, y: 62, dir: 90, n: 3, len: 6.5, spread: 2.6, life: 600 } },
-           { art: "crash", at: 7.20, out: 8.70, x: 26, y: 70, w: 32 }],
+           { art: "crash", at: 7.20, out: 8.70, x: 26, y: 70, w: 32 },
+           /* AND THE POTS COME TO REST. The crash itself is mixed into the
+              recording and is loud until 8.45, then falls away to nothing by
+              8.95 where the clip ends. That decay is the fall being over, and
+              until now nothing followed it — the page simply went quiet.
+
+              8.50 lays this underneath the last of it: its opening pieces
+              land while the recording is still ringing, and it carries on
+              alone once the clip has finished, so the page ends on metal
+              settling rather than on silence.
+
+              It runs 2.21s from 8.50, which puts its end at 10.71. The page
+              turns at 10.00 and the next page's cues are bound about 10.78,
+              which is when Sfx.hush would cut anything still sounding — so it
+              finishes with room to spare, and the last of it carries across
+              the turn into page 12, where she is picking the pots up. */
+           { at: 8.50, sfx: "clatter" }],
 
       /* 12 · she gathers the pots up, and finds the locket she lost. */
       12: [{ at: 0.50, sfx: "settle",
@@ -1588,30 +1575,50 @@
       /* 13 · she holds the locket up, laughing, and Aaru laughs too. */
       13: [{ at: 0.30, sfx: "chime",
              lines: { x: 11, y: 40, dir: -90, n: 3, len: 4.5, burst: true, arc: 124, life: 700,
-                      tone: "light" } }],
+                      tone: "light" } },
+           /* AND THEN HE LAUGHS. The page's last line is "आरु भी खिलखिला उठा।"
+              — Aaru burst out laughing too — and until now it was the only
+              thing in the book that said a sound happened without the sound
+              happening. She says it from 6.03 to 6.95 in this clip.
+
+              6.95 is the moment she finishes. With the 0.12 lead every cue
+              gets, the laugh actually starts at 6.83, which puts it under her
+              last syllable rather than in a gap after it: it arrives ON the
+              word, the way a laugh does, instead of politely waiting its turn.
+
+              It runs 2.45s and the clip ends at 7.25, so it is still going as
+              the ending's paper transition begins — deliberately. The laugh is
+              what carries the reader out of the book and into the film, and
+              cutting it off at the page boundary would leave the story ending
+              on a stopped sound. */
+           { at: 6.95, sfx: "laugh" }],
 
       /* The film keeps its own soundtrack and its own cue list, and entries
          here run exactly like the page cues above — with `hold` available as
          well, since a film is the one thing in the book whose clock we can
          stop.
 
-         THE BEAT AFTER "ओहो!". He looks at the pictures he has just scattered,
-         says "ओहो!", and the speech bubble that carries the whole line — "ओहो!
-         अब क्या करें?" — pops up at 19.05 and stays up until 21.2. In the
-         recording the two halves of it are 18.60–19.56 and 20.31–21.18, three
-         quarters of a second apart, which is a breath rather than a beat: the
-         question arrives before a child has finished reading the line that is
-         asking it.
+         THE BEAT AFTER HE HAS FINISHED THE LINE. He looks at the pictures he
+         has just scattered and says "ओहो! अब क्या करें?" — and the line is in
+         two halves with a gap between them: 18.60–19.56 is "ओहो!", 20.31–21.18
+         is "अब क्या करें?". The speech bubble carries the whole thing at once,
+         up at 19.05 and gone by 21.30.
 
-         So the film stops at 19.60 — four hundredths past the end of "ओहो!",
-         so the word is heard whole and nothing is cut — and holds for a second
-         on him thinking, bubble up. The gap between the two halves becomes
-         1.75s, and the picture is still while it happens, which is what makes
-         it read as him wondering rather than as the film stalling.
+         The hold was at 19.60 to begin with, which is in the GAP — after
+         "ओहो!" and before the question. It fired correctly and it was wrong:
+         a second of silence dropped into the middle of a sentence does not
+         read as him thinking, it reads as the film losing its place, and the
+         question then arrives detached from the exclamation that set it up.
+         A beat belongs at the end of a sentence, not inside one.
 
-         Timings measured off assets/video/aru.mp4 with silence detection at
-         -32 dB, and the bubble's own in and out read off the frames. */
-      film: [{ at: 19.60, hold: 1.0 }]
+         So it stops at 21.20 instead: two hundredths past the last word, on
+         the last frame that still has the whole bubble on it — 21.30 is the
+         first frame without it. He says the line, it stands there a second
+         with the question up where a child can read it, and then he moves.
+
+         Timings measured off assets/video/aru.webm with silence detection at
+         -32 dB, and the bubble's own in and out read off the frames at 0.1s. */
+      film: [{ at: 21.20, hold: 1.0 }]
     };
 
     /* An <img> takes its width from the CSS but its *height* from the file,
@@ -1621,7 +1628,7 @@
        shape is stated up front, and each preload below corrects it from the
        real file in case an asset is ever re-exported at another size. */
     const shape = { ring: 1100 / 1011, tub: 1100 / 686, crash: 1100 / 686,
-                    sneeze: 1100 / 1047, splash: 1100 / 1047 };
+                    sneeze: 1100 / 1047, splash: 1100 / 1100 };
 
     let layer   = null;
     let media   = null;   /* the element whose playhead we are following */
@@ -1686,7 +1693,7 @@
       } else {
         img = document.createElement("img");
         img.className = "popart__item";
-        img.src = ART + cue.art + ".webp";
+        img.src = art(cue.art);
         img.alt = "";
         img.draggable = false;
         img.decoding = "async";
@@ -1897,7 +1904,7 @@
           im.onload = () => {
             if (im.naturalHeight) shape[c.art] = im.naturalWidth / im.naturalHeight;
           };
-          im.src = ART + c.art + ".webp";
+          im.src = art(c.art);
         }
         if (media && media === PageAudio.media) { cues = queued; prev = 0; }
       },
@@ -2928,7 +2935,16 @@
           return calmRun(covered).then(() => { if (h.done) h.done(); }).then(done, done);
         }
 
+        /* The sheets have a sound of their own, and it starts with them: 4.97s
+           against a flight that runs about four, so it is still tailing off as
+           the last sheet leaves rather than stopping short of one still in the
+           air. It obeys the book's sound switch like every other recording.
+
+           Only on the full flight. The reduced-motion path below is a half
+           second of fade with no sheets in it, and five seconds of paper over
+           it would be describing something that is not happening. */
         host.classList.add("is-running");
+        Beats.sfx("paper");
         const sheets = deal();
         /* the loading happens under cover of the flight, not before it */
         try { if (h.prepare) h.prepare(); } catch { /* as above */ }
@@ -3042,7 +3058,7 @@
     const Finale = (() => {
       const host = $("#finale");
       const film = $("#finaleFilm");
-      const CLIP = "assets/video/aru.mp4";
+      const CLIP = "assets/video/aru.webm";
       Beats.attachFilm(film);   /* the film keeps its own cue list */
       /* the beat between the last sheet leaving and the film starting to move:
          the reveal lands on a held frame, and then the story moves */
@@ -3626,18 +3642,16 @@
 
       playBtn.addEventListener("click", play);
 
-      /* The cover's play button answers the touch before it acts on it.
-         The pop sound fires on pointerdown — the moment the finger lands, and
-         the gesture Web Audio wants to unlock on — while the springy release
-         is a CSS animation driven by .is-pop. Entering play mode waits one
-         short beat so that release is seen and heard, not swallowed by the
-         zoom; the class is cleared on animationend so a second tap replays
-         it, and re-added after a reflow so the restart actually takes. */
-      startBtn.addEventListener("pointerdown", () => Pop.play(), { passive: true });
-      startBtn.addEventListener("click", (e) => {
-        /* Enter/Space raise a click with no pointer behind it (detail 0), so
-           the keyboard gets its pop here rather than going silent */
-        if (!e.detail) Pop.play();
+      /* The cover's play button answers the touch before it acts on it — with
+         the springy release, a CSS animation driven by .is-pop. It answered
+         with a sound as well and no longer does: the title line starts on this
+         same press, and a pop in front of it was one sound too many.
+
+         Entering play mode still waits one short beat so that release is seen
+         rather than swallowed by the zoom; the class is cleared on animationend
+         so a second tap replays it, and re-added after a reflow so the restart
+         actually takes. */
+      startBtn.addEventListener("click", () => {
         startBtn.classList.remove("is-pop");
         void startBtn.offsetWidth;
         startBtn.classList.add("is-pop");
