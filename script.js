@@ -2604,9 +2604,35 @@
        AUTO_SILENT does not currently fire — it stays because "how long a page
        with nothing to say holds for" is a question the auto-turn has to have an
        answer to, and finding out it has none by adding a wordless page is the
-       worse way to learn it. */
-    const AUTO_BEAT   = 1200;   /* ms after a page has spoken */
-    const AUTO_SILENT = 2600;   /* ms after a page with nothing to say */
+       worse way to learn it.
+
+       ── ONE SECOND, AND THE SAME SECOND EVERY TIME ────────────────────────
+       The beat is a DEADLINE, not a delay, and that is the whole of what makes
+       it even. A delay is a number handed to setTimeout and forgotten; if the
+       moment it lands on is a bad one — mid-turn, menu open, tab in the
+       background — the old code simply asked again in 600ms, or 400ms, and the
+       reader got whatever that rounded up to. A page could hold for a second,
+       or for a second and a half, with nothing in the story to explain the
+       difference. That is what read as uneven.
+
+       So the beat is a time to turn AT. Every blocked path re-checks on a
+       60ms tick and turns the moment the way is clear, which puts the worst
+       case within a frame or two of the intended second instead of half of one
+       past it. Nothing rounds up any more.
+
+       AND HIDDEN TIME DOES NOT COUNT. A tab in the background spends the beat
+       on nobody: the reader comes back to a page that has already used up its
+       second, and it turns out from under them. So the deadline is pushed
+       forward while the tab is away, and they get their full second of a page
+       they can actually see. It is their beat, not the clock's.
+
+       THE FILM IS NOT IN THIS. The last page hands over to Finale.run()
+       instead of turning (see Book.onReady below), and the film's own ending
+       hands over to the game, so nothing on this path times the video or the
+       transition around it. Changing the beat cannot touch it. */
+    const AUTO_BEAT   = 1000;   /* ms after a page has spoken — one second      */
+    const AUTO_SILENT = 2600;   /* ms after a page with nothing to say          */
+    const AUTO_TICK   = 60;     /* how often a beat that cannot land re-checks  */
     let autoTimer = 0;
 
     function autoTurn(from) {
@@ -2618,19 +2644,31 @@
       if (!PlayMode.on) return;
 
       const spoken = from === Book.index ? PageAudio.hasClip : true;
+      const beat = spoken ? AUTO_BEAT : AUTO_SILENT;
+      let due = performance.now() + beat;
+
       autoTimer = setTimeout(function turn() {
         /* the reader has moved on by themselves — that page's turn is void */
         if (Book.index !== from) return;
         if (!PlayMode.on) return;           /* they have left the story */
+
+        const t = performance.now();
+
+        /* the tab is not being looked at: a page that turns now is a page the
+           reader never saw, and a beat spent in the background is a beat they
+           did not get. Hold, and hand them a whole one when they are back. */
+        if (document.hidden) { due = t + beat; autoTimer = setTimeout(turn, AUTO_TICK); return; }
+
         /* mid-turn, or they are picking a page out of the menu: wait, do not
            give up, or the book would simply stop */
-        if (Book.busy || JumpMenu.open) { autoTimer = setTimeout(turn, 600); return; }
-        /* the tab is not being looked at: a page that turns now is a page the
-           reader never saw. Wait for them, the same way it waits out a menu —
-           the beat is theirs, not the clock's. */
-        if (document.hidden) { autoTimer = setTimeout(turn, 400); return; }
+        if (Book.busy || JumpMenu.open) { autoTimer = setTimeout(turn, AUTO_TICK); return; }
+
+        /* held past the moment for one of the reasons above, and now free: go
+           the instant the deadline is met rather than at the next tick */
+        if (t < due) { autoTimer = setTimeout(turn, Math.max(0, due - t)); return; }
+
         Book.next();
-      }, spoken ? AUTO_BEAT : AUTO_SILENT);
+      }, beat);
     }
 
     /* ── the idle hand ────────────────────────────────────────────────────
