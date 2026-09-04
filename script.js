@@ -523,6 +523,7 @@
 
     function stop() {
       token++;
+      held = false;                  /* whatever was waiting to resume is void */
       /* Pause and rewind only. Tearing the source down here (removeAttribute
          + load) leaves a teardown in flight that collides with the next
          clip's load and wedges it at readyState 0. The element holds one
@@ -530,6 +531,47 @@
       if (el) { try { el.pause(); el.currentTime = 0; } catch { /* not started */ } }
       delete document.documentElement.dataset.clip;
       announce(false);
+    }
+
+    /* ── holding, which is not stopping ─────────────────────────────────────
+       The tab goes away mid-sentence and comes back. stop() is the wrong tool
+       for that and was what was used: it rewinds to zero and it deliberately
+       does NOT announce the clip as finished, so the page came back silent
+       from the top with the forward gate still shut — the reader was left on a
+       page that had stopped talking and would not let them leave.
+
+       So the playhead is left exactly where it is. No rewind, and the token is
+       not bumped either: bumping it is how a clip is disowned, and this clip
+       is coming back. What does happen is announce(false), which is what tells
+       Beats to stop following a playhead that is not moving; play() fires
+       `playing` on the way back in, and Beats re-follows from wherever the
+       clip now is, so no cue behind the playhead fires twice.
+
+       `held` is the difference between a clip that is waiting and one that is
+       simply not playing — the reader may have switched the narration off, or
+       be on a page with no words, and neither of those should start talking
+       because a tab regained focus. Only what this paused, this resumes. */
+    let held = false;
+
+    function hold() {
+      if (!el || el.paused || el.ended) return;
+      if (!el.getAttribute("src")) return;
+      held = true;
+      try { el.pause(); } catch { /* not started */ }
+      announce(false);
+    }
+
+    function unhold() {
+      if (!held) return;
+      held = false;
+      if (!el || !el.getAttribute("src") || el.ended) return;
+      const mine = token;
+      const p = el.play();
+      if (p && p.catch) p.catch(() => {
+        /* refused on the way back: let the page finish rather than hang, the
+           same answer start() gives when a clip will not play */
+        if (mine === token) finish();
+      });
     }
 
     function start() {
@@ -579,6 +621,7 @@
       },
 
       stop,
+      hold, unhold,                    /* the tab left, and came back */
       play()   { if (on) start(); },   /* auto-play when a page arrives */
       replay() { start(); },           /* tapping the words */
 
@@ -756,7 +799,28 @@
        so the turn that hangs off its ending does not run */
     function stop() {
       done = null;
+      heldVO = false;
       if (el) { try { el.pause(); el.currentTime = 0; } catch { /* not started */ } }
+    }
+
+    /* The tab going away mid-line must not turn the page behind the reader's
+       back, which is what would happen if the recording were left to run and
+       end while nothing was on screen. It waits where it is instead, and the
+       turn still hangs off its real ending — only later. */
+    let heldVO = false;
+
+    function hold() {
+      if (!done || !el || el.paused || el.ended) return;
+      heldVO = true;
+      try { el.pause(); } catch { /* not started */ }
+    }
+
+    function unhold() {
+      if (!heldVO) return;
+      heldVO = false;
+      if (!done || !el || el.ended) return;
+      const p = el.play();
+      if (p && p.catch) p.catch(settle);   /* refused: let the turn happen */
     }
 
     return {
@@ -776,7 +840,7 @@
         if (p && p.catch) p.catch(settle);
       },
 
-      stop
+      stop, hold, unhold
     };
   })();
 
@@ -2561,6 +2625,10 @@
         /* mid-turn, or they are picking a page out of the menu: wait, do not
            give up, or the book would simply stop */
         if (Book.busy || JumpMenu.open) { autoTimer = setTimeout(turn, 600); return; }
+        /* the tab is not being looked at: a page that turns now is a page the
+           reader never saw. Wait for them, the same way it waits out a menu —
+           the beat is theirs, not the clock's. */
+        if (document.hidden) { autoTimer = setTimeout(turn, 400); return; }
         Book.next();
       }, spoken ? AUTO_BEAT : AUTO_SILENT);
     }
@@ -3051,9 +3119,32 @@
         film.addEventListener("ended", openGame, { once: true });
       }
 
+      /* The film waits out a tab switch too, and for the sharper reason: it
+         ends by handing the reader over to the game, so a film left running
+         behind a hidden tab does not merely lose its place — it finishes, and
+         the reader comes back to a game they never saw start. Only a film that
+         was actually running is resumed; one still sitting on its first frame
+         behind the paper is left alone for the transition to start itself. */
+      let heldFilm = false;
+
+      function hold() {
+        if (!film || film.paused || film.ended || !film.getAttribute("src")) return;
+        heldFilm = true;
+        try { film.pause(); } catch { /* never started */ }
+      }
+
+      function unhold() {
+        if (!heldFilm) return;
+        heldFilm = false;
+        if (!film || film.ended || !film.getAttribute("src")) return;
+        const p = film.play();
+        if (p && p.catch) p.catch(() => { /* the frame stays instead */ });
+      }
+
       /* warm: the menu opening is a head start on the game's 600KB.
          here: whether the folder is actually present, for the menu to ask. */
-      return { run, reset, warm: warmGame, openGame, get here() { return there !== false; } };
+      return { run, reset, warm: warmGame, openGame, hold, unhold,
+               get here() { return there !== false; } };
     })();
 
     /* ── the jump menu ────────────────────────────────────────────────────
@@ -3465,10 +3556,33 @@
       $(".caption").addEventListener("click", () => Book.replay());
 
       /* stop the world when the tab is hidden --------------------------- */
+      /* ── the tab going away, and coming back ──────────────────────────────
+         The story waits. It does not stop, and it emphatically does not start
+         again: the page stays the page it was, the clip keeps its playhead,
+         and the reader picks up the sentence where they left it.
+
+         This used to call PageAudio.stop(), which is a different thing wearing
+         the same word. stop() rewinds to zero and does not announce the clip
+         as finished — so a reader who glanced at another tab came back to a
+         silent page, from the top, with the forward gate still shut behind a
+         clip that was never going to end. The page was not paused, it was
+         killed, and it took the way out with it.
+
+         Three things can be mid-flight and each is held where it is: the
+         page's narration, the title line on the cover, and the ending film.
+         The auto-turn is the fourth — it keeps waiting rather than turning
+         (see autoTurn), so nobody comes back to a page they never saw.
+
+         What is NOT touched: the page number, the cue list, `heard`, the
+         ambience, the artwork, or anything about where the reader is. The
+         .is-hidden class parks the CSS animations (style.css §7) and they come
+         back with it. Nothing here resets any of that, which is the whole
+         point — the story is on hold, not on rewind. */
       document.addEventListener("visibilitychange", () => {
         const hidden = document.hidden;
         document.documentElement.classList.toggle("is-hidden", hidden);
-        if (hidden) PageAudio.stop();   /* nothing plays into a hidden tab */
+        if (hidden) { PageAudio.hold(); TitleVO.hold(); Finale.hold(); }
+        else        { PageAudio.unhold(); TitleVO.unhold(); Finale.unhold(); }
       });
 
       /* rebuild the scene if the visitor flips reduced-motion on/off ---- */
