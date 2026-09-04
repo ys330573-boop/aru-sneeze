@@ -1097,14 +1097,26 @@ html, body {
    waiting their turn. On a board made for five-year-olds that is the wrong kind
    of quiet: it looks broken, not patient.
 
-   So the frame stays a frame. The mat holds at 0.9, opaque enough that its
-   edge is still a clean line against the planks, and the "not yet" is carried
-   by the recess instead: paled with brightness() and only half desaturated, so
-   it keeps its peach and simply sits back, and - the part that does most of the
-   work - flattened, because box-shadow: none takes away the inset depth that
-   makes the active frame look like something a card can go into. Deep and warm
-   means play me; flat and pale means wait. That reads without a colour being
-   named, which matters for a child who cannot read the question yet.
+   So the frame stays a frame - it just stops volunteering. The mat drops to
+   0.50 and the recess to 0.45: far enough that the planks read through both and
+   the two waiting frames clearly sit behind the one that is live, but the fill
+   is still a fill, so the mat's edge stays a clean line rather than dissolving
+   into the wood.
+
+   AND THIS IS NOT THE GREY FAILURE ABOVE. What made those smudges was
+   saturate() driving a peach recess toward grey, a colour the wall does not
+   contain. Dropping opacity over warm planks moves the frame toward the wood's
+   OWN colour instead, so a dim frame still belongs to the board - it reads as
+   sitting back, not as broken. The saturate(0.6) that caused the trouble is
+   left exactly where it was.
+
+   THE RECESS STILL CARRIES THE REST. Paled with brightness() and only half
+   desaturated it keeps its peach and simply sits back, and - the part that
+   still does the work no amount of dimming can do - flattened, because
+   box-shadow: none takes away the inset depth that makes the active frame look
+   like something a card can go into. Deep and warm means play me; flat and pale
+   means wait. That reads without a colour being named, which matters for a
+   child who cannot read the question yet.
 
    AND IT FADES IN AND OUT, which is the whole point of the second half of the
    ask. "When the first frame is filled, the second frame will become enabled" is
@@ -1114,10 +1126,10 @@ html, body {
    transition: .slot.is-over paints its ring through the same property and a drop
    target has to answer instantly. */
 .slot.is-later .slot-mat {
-  opacity: 0.9;
+  opacity: 0.50;
 }
 .slot.is-later .slot-well {
-  opacity: 0.9;
+  opacity: 0.45;
   filter: saturate(0.6) brightness(1.07);
   box-shadow: none;
 }
