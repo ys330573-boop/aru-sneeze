@@ -1082,10 +1082,29 @@ html, body {
    DIMMED, NOT HIDDEN. The three frames ARE the shape of the answer - a story
    with three beats - and a child needs to see all three to know how much of it
    is left. So a frame whose turn is later keeps its place and gives up only its
-   readiness: the mat goes translucent enough for the wall to come through, and
-   the recess loses its colour and its depth. What that buys is not really the
-   dimming, it is the contrast - with two frames pulled back, the one that
-   pulses is the only lit thing on the line.
+   readiness. What that buys is not really the dimming, it is the contrast -
+   with two frames pulled back, the one that pulses is the only lit thing on
+   the line.
+
+   IT GIVES UP DEPTH AND COLOUR, NOT SUBSTANCE. This used to fade the mat to
+   0.5 and the recess to 0.45 with saturate(0.15), which is a reasonable way to
+   grey something out and was the wrong one here. Two things went wrong with it
+   at once, and both are about what is BEHIND these frames: the wall is peach
+   pine with plank seams, so a mat at half opacity stopped reading as a white
+   card and started reading as a dirty patch with wood grain running through
+   it, and saturate() on a peach recess does not pale it, it drives it to grey -
+   so the two waiting frames looked like smudges on the wall rather than frames
+   waiting their turn. On a board made for five-year-olds that is the wrong kind
+   of quiet: it looks broken, not patient.
+
+   So the frame stays a frame. The mat holds at 0.9, opaque enough that its
+   edge is still a clean line against the planks, and the "not yet" is carried
+   by the recess instead: paled with brightness() and only half desaturated, so
+   it keeps its peach and simply sits back, and - the part that does most of the
+   work - flattened, because box-shadow: none takes away the inset depth that
+   makes the active frame look like something a card can go into. Deep and warm
+   means play me; flat and pale means wait. That reads without a colour being
+   named, which matters for a child who cannot read the question yet.
 
    AND IT FADES IN AND OUT, which is the whole point of the second half of the
    ask. "When the first frame is filled, the second frame will become enabled" is
@@ -1095,11 +1114,11 @@ html, body {
    transition: .slot.is-over paints its ring through the same property and a drop
    target has to answer instantly. */
 .slot.is-later .slot-mat {
-  opacity: 0.5;
+  opacity: 0.9;
 }
 .slot.is-later .slot-well {
-  opacity: 0.45;
-  filter: saturate(0.15);
+  opacity: 0.9;
+  filter: saturate(0.6) brightness(1.07);
   box-shadow: none;
 }
 /* The frames are keyboard targets - role="button" tabindex="0" in the bay
