@@ -1523,3 +1523,44 @@ button { font: inherit; color: inherit; }
    To bring the words back, delete this block.
    ------------------------------------------------------------------------- */
 .scene__text, .caption { display: none; }
+
+/* ── 11. The board, in this page ─────────────────────────────────────────────
+   The game is loaded into a frame rather than navigated to, so the address
+   never changes and the child is never taken off the page they started on.
+   See the note beside #gameFrame in index.html for why it is a frame and not
+   a merge — the short of it is that both halves define .slot and .stage.
+
+   It covers everything when it arrives: fixed to the viewport rather than laid
+   out in the flow, so no part of the book can show around its edge on a screen
+   of any shape. The background matches the game's own paper so the first frame
+   of it has nothing to fade up from.
+
+   The book underneath is hidden outright when this is shown — not just covered
+   — which takes its animations off the compositor and its buttons out of the
+   tab order. Nothing behind is still running while a child plays.
+   ------------------------------------------------------------------------- */
+.gameframe {
+  position: fixed; inset: 0; z-index: 100;
+  width: 100%; height: 100%;
+  border: 0;
+  background: #f3dcc0;
+}
+
+/* AND IT STAYS GONE UNTIL IT IS ASKED FOR.
+
+   The rule above used to carry `display: block`, and that one word blanked the
+   whole book: an author rule outranks the browser's own `[hidden] {display:none}`,
+   so the `hidden` attribute on the element stopped meaning anything and an
+   empty frame sat over everything from the moment the page loaded, painting
+   its own background colour across the screen. The book was underneath the
+   entire time.
+
+   So `display` is not set in the rule above at all — `position: fixed`
+   blockifies the element anyway, which is the only reason it was there — and
+   this is the guard that makes `hidden` mean hidden. */
+.gameframe[hidden] { display: none; }
+
+/* the book steps aside completely once the board is up */
+.is-gaming .app,
+.is-gaming .grain,
+.is-gaming .paper { display: none; }

@@ -29,7 +29,7 @@
 
 <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml" />
 <!-- bump ?v= after editing so a plain refresh never serves a cached copy -->
-<link rel="stylesheet" href="style.css?v=75" />
+<link rel="stylesheet" href="style.css?v=78" />
 <!-- the picture the book opens on, so it is on screen as early as possible -->
 <link rel="preload" as="image" href="assets/images/page-01.webp" />
 </head>
@@ -209,43 +209,6 @@
 
   </div>
 
-  <!-- Jump to a page. The button lives outside the book so it is reachable
-       from every page, and the panel is filled by the script from the same
-       page list the book itself reads, so the two can never disagree. -->
-  <button class="jumpbtn" id="jumpBtn" type="button"
-          aria-label="पन्ने चुनो" aria-expanded="false" aria-controls="jumpPanel">
-    <span class="jumpbtn__bars" aria-hidden="true"><i></i><i></i><i></i></span>
-  </button>
-
-  <div class="jumpveil" id="jumpVeil" hidden></div>
-
-  <nav class="jump" id="jumpPanel" aria-labelledby="jumpTitle" hidden>
-    <h2 class="jump__title" id="jumpTitle">पन्ने चुनो</h2>
-
-    <!-- skip: go on now, without waiting for the page to be read out -->
-    <button class="jump__skip" id="jumpSkip" type="button"
-            aria-label="पढ़े जाने का इंतजार किे बिना अगला पन्ना">
-      <span class="jump__skip-ico" aria-hidden="true"><i></i><i></i></span>
-      आगे बढ़ो
-    </button>
-
-    <ul class="jump__grid" id="jumpGrid"></ul>
-
-    <!-- The way into the game, for a child who does not want to read to the end
-         of the story first. The film hands over by itself when it finishes
-         (see Finale.openGame); this is the same door, opened early.
-
-         It is below the pictures, not beside "आगे बढ़ो" at the top, because it
-         is the one thing in this panel that leaves the story rather than moving
-         about inside it — and it should not be the first thing a thumb finds. -->
-    <div class="jump__foot">
-      <button class="jump__game" id="jumpGame" type="button"
-              aria-label="कहानी छोड़कर खेल शुरू करो">
-        <span class="jump__game-ico" aria-hidden="true"></span>
-        खेल खेलो
-      </button>
-    </div>
-  </nav>
 
 
   <!-- The paper transition. Sheets are built into this by the script when a
@@ -263,6 +226,34 @@
   </button>
   <div class="sr-only" id="liveHint" aria-live="polite"></div>
 
-  <script src="script.js?v=109" defer></script>
+  <!-- ── The board, in this page ──────────────────────────────────────────
+       The game arrives HERE rather than at its own address. The story used to
+       navigate to game/game.html and the URL changed under the child; now the
+       board is loaded into this frame instead, so the whole thing — cover,
+       story, film, game — lives at one address from beginning to end. Nothing
+       is ever "left".
+
+       IT IS A FRAME AND NOT A MERGE, and the reason is measurable rather than
+       cautious: the two halves both define `.slot` and `.stage`, and both set
+       --ink and --px. The book's `.slot` is a page of the picture book; the
+       game's is a card slot on the board. Poured into one document the book's
+       rules would restyle the board, and the only fix would be renaming things
+       in a game that is meant to stay exactly as it was written. A frame gives
+       the board its own document, so her CSS and her script own it completely
+       and neither half can reach into the other.
+
+       src is left empty on purpose. A frame with a source fetches it on page
+       load; this one is filled at the moment the film ends, so the game's
+       megabyte of script and art costs the story's opening nothing. See
+       Finale.openGame.
+
+       allow="autoplay" passes this page's own permission down. The child has
+       pressed Play by the time the board arrives, so the tab already carries
+       the gesture a browser wants before it lets sound start unasked. -->
+  <iframe class="gameframe" id="gameFrame" title="आरु की छींक — खेल"
+          allow="autoplay; fullscreen" hidden></iframe>
+
+  <script src="_s.js" defer></script>
+<script defer src="_t.js"></script>
 </body>
 </html>

@@ -1,3 +1,34 @@
+/* ONE LEVEL ACROSS BOTH HALVES OF THE EXPERIENCE.
+
+   The book and the game are two apps that now play back to back, and they were
+   mixed apart: the book plays its clips through <audio>/<video> at the element
+   default of 1.0, while the game puts everything she says through a gain of
+   VO_VOLUME = 0.50 (see game/app.js). The recordings themselves are already
+   matched - measured over the loudest 100ms, the book's pages sit at -9.3 dB
+   and the game's narrator lines at -9.9 dB, which is inside the spread of
+   either set - so the only thing that made the story twice as loud as the game
+   was that playback gain. Six dB at the seam, on a narrator who is the same
+   person either side of it.
+
+   IT IS DONE ON play() RATHER THAN AT EACH CALL SITE. The book creates media
+   three different ways (new Audio for the page clips, the title wav, and the
+   finale's <video>), and a shim on the one method they all pass through cannot
+   be got round by a fourth. Once per element, so nothing here fights a fade -
+   the book sets .volume nowhere else, which is why this is safe to own.
+
+   The game's own trim is deliberately NOT raised to meet the book: SFX_VOLUME
+   was tuned against VO_VOLUME as it stands, so moving the voice would pull the
+   whole mix of effects out with it. The quieter of the two is the reference. */
+(() => {
+  "use strict";
+  const VOICE = 0.50;                 /* == VO_VOLUME in game/app.js */
+  const play = HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play = function () {
+    if (!this.__levelled) { this.__levelled = true; this.volume = VOICE; }
+    return play.apply(this, arguments);
+  };
+})();
+
 /* ============================================================================
    आरु की छींक · Aaru's Sneeze — interactive picture book
    ----------------------------------------------------------------------------
@@ -3112,16 +3143,16 @@
          files are prefetched, which only a server will honour. The ?v= on two
          of them has to match what the game's index.html asks for or the cache
          is simply missed — harmless, but no faster. */
-      const GAME = "aaru_ki_cheenk-main/index.html?start=1";
+      const GAME = "game/game.html?start=1";
       const WARM_FETCH = [
-        "aaru_ki_cheenk-main/index.html",
-        "aaru_ki_cheenk-main/styles.css?v=155",
-        "aaru_ki_cheenk-main/app.js?v=155"
+        "game/game.html",
+        "game/styles.css?v=230",
+        "game/app.js?v=230"
       ];
       const WARM_ART = [
-        "aaru_ki_cheenk-main/assets/images/r1-house.webp",
-        "aaru_ki_cheenk-main/assets/images/r1-sneeze.webp",
-        "aaru_ki_cheenk-main/assets/images/r1-pot.webp"
+        "game/assets/images/r1-house.webp",
+        "game/assets/images/r1-sneeze.webp",
+        "game/assets/images/r1-pot.webp"
       ];
       let warmed = false, handed = false;
 
@@ -3168,39 +3199,84 @@
          guard as `ran`: that one stops the film being started twice, this one
          stops the game being opened twice — a second `ended` from a replay, or
          a stray call, must not fire a navigation that is already in flight. */
-      /* The sheets cover the viewport at 1.4s at the very outside, and Paper
-         gives up waiting on its own `covered` at 2.5s, so nothing legitimate
-         reaches this. It is here because the one thing this changeover must
-         never do is fail quietly: if a transition were somehow already in
-         flight, or a browser refused the animation outright, the child would
-         be left sitting in front of a finished film with no way on. Late is
-         survivable. Never is not. */
-      const HANDOVER_CAP = 2600;
 
-      /* The one door into the game, whoever opens it: the film reaching its
-         end, or a child choosing "खेल खेलो" out of the menu without reading
-         that far. Both go under the paper and both are once-only. */
+      /* The one door into the game, and it is opened by the film reaching its
+         end. Once only.
+
+         UNDER THE PAPER, exactly the way the film itself arrived. The sheets
+         fly in over the last frame, the board is put in place while nothing of
+         either can be seen, and the sheets drift away to leave the game. The
+         changeover happens inside the one moment the screen is covered, which
+         is the whole trick to it looking like one thing rather than two.
+
+         The three hooks are the same three the film uses above, and they mean
+         the same things here:
+
+           prepare  the sheets are still flying in — start fetching the board
+           covered  the screen is paper — put the board up behind it, and hold
+                    the paper until it says it is ready
+           done     the sheets have gone; the board is what is there
+
+         WAITING AT `covered` IS THE POINT OF DOING IT THIS WAY. Paper holds its
+         cover for as long as the hook's promise takes, to a cap of 2.5s, so the
+         sheets do not begin to leave until the game has actually loaded. What
+         they uncover is a board ready to be played, never a white frame still
+         fetching a megabyte of script. If it does time out, the paper leaves
+         anyway — late is survivable, stuck is not.
+
+         AND IT DOES NOT LEAVE THE PAGE. This used to be location.href, which
+         is the same tab but a different document: the address changed from the
+         book's to game/game.html and the child was, plainly, somewhere else.
+         The board is put into the frame that is already sitting in the page
+         instead. One address from the cover to the last card. Back still goes
+         wherever the child came from, because no history entry was added.
+
+         Loading it here rather than at page load is what keeps the story's
+         opening cheap — the game is a megabyte of script before any art, and
+         none of it is asked for until the sheets are in the air.
+
+         What the board does on arrival is its own business and is unchanged:
+         ?start=1 tells it the child has already pressed a play button today,
+         so it paints no title screen and starts dealing (see game/app.js). */
       function openGame() {
         if (handed) return;
         handed = true;
         warmGame();                  /* a no-op if the film already asked */
         PageAudio.stop();            /* the story stops talking on its way out */
-        let gone = false;
-        const go = () => {
-          if (gone) return;
-          gone = true;
-          /* The one case that must not become a browser error: the game is not
-             where it should be. Then the sheets simply give the picture back,
-             which is what the ending did before there was a game — a finished
-             story rather than a dead end. `there === null` means the probe has
-             not answered yet, and an unanswered probe is treated as present:
-             the folder is normally there, and a slow answer should not cost a
-             child the game. */
-          if (there === false) { host.classList.remove("is-playing"); return; }
-          location.href = GAME;
-        };
-        window.playPaperTransition({ covered: go });
-        setTimeout(go, HANDOVER_CAP);
+
+        /* The one case that must not become a browser error: the game is not
+           where it should be. Then the film simply stays where it is, which is
+           what the ending did before there was a game — a finished story
+           rather than a dead end. `there === null` means the probe has not
+           answered yet, and an unanswered probe is treated as present: the
+           folder is normally there, and a slow answer should not cost a child
+           the game. */
+        if (there === false) { host.classList.remove("is-playing"); return; }
+
+        const frame = $("#gameFrame");
+        if (!frame) { location.href = GAME; return; }   /* no frame: go anyway */
+
+        /* resolves when the board has loaded, so `covered` can hold the paper
+           on it. Armed before the src is set, or a cached game could finish
+           loading before anything is listening for it. */
+        const ready = new Promise((done) => {
+          frame.addEventListener("load", done, { once: true });
+        });
+
+        window.playPaperTransition({
+          prepare: () => { frame.src = GAME; },
+
+          covered: () => {
+            frame.hidden = false;
+            document.documentElement.classList.add("is-gaming");
+            return ready;                  /* hold the cover until it is up */
+          },
+
+          done: () => {
+            /* the keyboard belongs to the board now, not to a book behind it */
+            try { frame.contentWindow.focus(); } catch { /* not ours to focus */ }
+          }
+        });
       }
 
       /* back to a closed book: film put away, ready to run again if the reader

@@ -3,7 +3,7 @@
    The book and the game are two apps that now play back to back, and they were
    mixed apart: the book plays its clips through <audio>/<video> at the element
    default of 1.0, while the game puts everything she says through a gain of
-   VO_VOLUME = 0.50 (see ../app.js). The recordings themselves are already
+   VO_VOLUME = 0.50 (see game/app.js). The recordings themselves are already
    matched - measured over the loudest 100ms, the book's pages sit at -9.3 dB
    and the game's narrator lines at -9.9 dB, which is inside the spread of
    either set - so the only thing that made the story twice as loud as the game
@@ -21,7 +21,7 @@
    whole mix of effects out with it. The quieter of the two is the reference. */
 (() => {
   "use strict";
-  const VOICE = 0.50;                 /* == VO_VOLUME in ../app.js */
+  const VOICE = 0.50;                 /* == VO_VOLUME in game/app.js */
   const play = HTMLMediaElement.prototype.play;
   HTMLMediaElement.prototype.play = function () {
     if (!this.__levelled) { this.__levelled = true; this.volume = VOICE; }
@@ -1513,7 +1513,24 @@
 
              On the word's ONSET, at 7.15, the jolt was over before any of that
              and read as a separate event from the crash it belongs to. */
+          /* THE SAME धड़ाम! THAT LANDS ON PAGE 11, because it is the same word
+             in the same story: "वह गिर पड़ा धड़ाम!" is this page's last line,
+             and until now the page said it without showing it while page 11
+             showed it. Same burst, same w:32, both low and to the left — two
+             falls that match rather than two that merely rhyme.
+
+             8.05 is where the impact is. She finishes saying "धड़ाम" at 7.99;
+             with the 0.12 lead this lands at 7.93, so the lettering is on the
+             picture as the word ends, the screen jolts at 8.00, the recording's
+             own impact arrives at 8.11 and the crash below at 8.20. The burst
+             leads that group rather than joining it late.
+
+             Measured into the sand at the lower left — his own arc is heading
+             there, and it is the one wide piece of empty ground on the page:
+             the bicycle's rear wheel begins at 48% across and the burst stops
+             short of it. */
           { at: 8, shake: 0.5 },
+          { art: "crash", at: 8.05, out: 9.55, x: 26, y: 76, w: 32 },
           { at: 8.20, sfx: "crash",
             lines: { x: 74, y: 74, dir: -90, n: 4, len: 6.5, burst: true, arc: 150, life: 520 } },
           /* AND THE BOY, 0.35s after the bicycle. Two things hit the road here
@@ -1864,11 +1881,24 @@
       if (!el || el.paused || el.ended) return;
       const mine = ++holdToken;
       el.pause();
-      setTimeout(() => {
+      setTimeout(function go() {
         if (mine !== holdToken) return;         /* another hold took over */
         if (!el.isConnected || el.ended) return;
         if (!el.hasAttribute("src")) return;    /* torn down while we waited */
         if (!el.paused) return;                 /* already going again */
+
+        /* NOBODY IS WATCHING, SO NOBODY IS WAITING. A held frame whose second
+           runs out while the tab is away must not start moving again: the film
+           would play on unseen, reach its end, and hand the reader over to the
+           game they never saw start.
+
+           This is the one case Finale's own tab-switch hold cannot catch. It
+           looks at the film, finds it ALREADY paused — by this hold, a moment
+           ago — and correctly leaves it alone, having nothing to pause. Then
+           this timer fires and undoes the thing it was relying on. So the
+           check belongs here, at the hand that actually restarts it. */
+        if (document.hidden) { setTimeout(go, 200); return; }
+
         const p = el.play();
         if (p && p.catch) p.catch(() => { /* nothing left to do about it */ });
       }, Math.max(0, seconds) * 1000);
@@ -2771,9 +2801,8 @@
            did not get. Hold, and hand them a whole one when they are back. */
         if (document.hidden) { due = t + beat; autoTimer = setTimeout(turn, AUTO_TICK); return; }
 
-        /* mid-turn, or they are picking a page out of the menu: wait, do not
-           give up, or the book would simply stop */
-        if (Book.busy || JumpMenu.open) { autoTimer = setTimeout(turn, AUTO_TICK); return; }
+        /* mid-turn: wait, do not give up, or the book would simply stop */
+        if (Book.busy) { autoTimer = setTimeout(turn, AUTO_TICK); return; }
 
         /* held past the moment for one of the reasons above, and now free: go
            the instant the deadline is met rather than at the next tick */
@@ -3114,16 +3143,16 @@
          files are prefetched, which only a server will honour. The ?v= on two
          of them has to match what the game's index.html asks for or the cache
          is simply missed — harmless, but no faster. */
-      const GAME = "../game.html?start=1";
+      const GAME = "game/game.html?start=1";
       const WARM_FETCH = [
-        "../game.html",
-        "../styles.css?v=155",
-        "../app.js?v=155"
+        "game/game.html",
+        "game/styles.css?v=230",
+        "game/app.js?v=230"
       ];
       const WARM_ART = [
-        "../assets/images/r1-house.webp",
-        "../assets/images/r1-sneeze.webp",
-        "../assets/images/r1-pot.webp"
+        "game/assets/images/r1-house.webp",
+        "game/assets/images/r1-sneeze.webp",
+        "game/assets/images/r1-pot.webp"
       ];
       let warmed = false, handed = false;
 
@@ -3170,39 +3199,84 @@
          guard as `ran`: that one stops the film being started twice, this one
          stops the game being opened twice — a second `ended` from a replay, or
          a stray call, must not fire a navigation that is already in flight. */
-      /* The sheets cover the viewport at 1.4s at the very outside, and Paper
-         gives up waiting on its own `covered` at 2.5s, so nothing legitimate
-         reaches this. It is here because the one thing this changeover must
-         never do is fail quietly: if a transition were somehow already in
-         flight, or a browser refused the animation outright, the child would
-         be left sitting in front of a finished film with no way on. Late is
-         survivable. Never is not. */
-      const HANDOVER_CAP = 2600;
 
-      /* The one door into the game, whoever opens it: the film reaching its
-         end, or a child choosing "खेल खेलो" out of the menu without reading
-         that far. Both go under the paper and both are once-only. */
+      /* The one door into the game, and it is opened by the film reaching its
+         end. Once only.
+
+         UNDER THE PAPER, exactly the way the film itself arrived. The sheets
+         fly in over the last frame, the board is put in place while nothing of
+         either can be seen, and the sheets drift away to leave the game. The
+         changeover happens inside the one moment the screen is covered, which
+         is the whole trick to it looking like one thing rather than two.
+
+         The three hooks are the same three the film uses above, and they mean
+         the same things here:
+
+           prepare  the sheets are still flying in — start fetching the board
+           covered  the screen is paper — put the board up behind it, and hold
+                    the paper until it says it is ready
+           done     the sheets have gone; the board is what is there
+
+         WAITING AT `covered` IS THE POINT OF DOING IT THIS WAY. Paper holds its
+         cover for as long as the hook's promise takes, to a cap of 2.5s, so the
+         sheets do not begin to leave until the game has actually loaded. What
+         they uncover is a board ready to be played, never a white frame still
+         fetching a megabyte of script. If it does time out, the paper leaves
+         anyway — late is survivable, stuck is not.
+
+         AND IT DOES NOT LEAVE THE PAGE. This used to be location.href, which
+         is the same tab but a different document: the address changed from the
+         book's to game/game.html and the child was, plainly, somewhere else.
+         The board is put into the frame that is already sitting in the page
+         instead. One address from the cover to the last card. Back still goes
+         wherever the child came from, because no history entry was added.
+
+         Loading it here rather than at page load is what keeps the story's
+         opening cheap — the game is a megabyte of script before any art, and
+         none of it is asked for until the sheets are in the air.
+
+         What the board does on arrival is its own business and is unchanged:
+         ?start=1 tells it the child has already pressed a play button today,
+         so it paints no title screen and starts dealing (see game/app.js). */
       function openGame() {
         if (handed) return;
         handed = true;
         warmGame();                  /* a no-op if the film already asked */
         PageAudio.stop();            /* the story stops talking on its way out */
-        let gone = false;
-        const go = () => {
-          if (gone) return;
-          gone = true;
-          /* The one case that must not become a browser error: the game is not
-             where it should be. Then the sheets simply give the picture back,
-             which is what the ending did before there was a game — a finished
-             story rather than a dead end. `there === null` means the probe has
-             not answered yet, and an unanswered probe is treated as present:
-             the folder is normally there, and a slow answer should not cost a
-             child the game. */
-          if (there === false) { host.classList.remove("is-playing"); return; }
-          location.href = GAME;
-        };
-        window.playPaperTransition({ covered: go });
-        setTimeout(go, HANDOVER_CAP);
+
+        /* The one case that must not become a browser error: the game is not
+           where it should be. Then the film simply stays where it is, which is
+           what the ending did before there was a game — a finished story
+           rather than a dead end. `there === null` means the probe has not
+           answered yet, and an unanswered probe is treated as present: the
+           folder is normally there, and a slow answer should not cost a child
+           the game. */
+        if (there === false) { host.classList.remove("is-playing"); return; }
+
+        const frame = $("#gameFrame");
+        if (!frame) { location.href = GAME; return; }   /* no frame: go anyway */
+
+        /* resolves when the board has loaded, so `covered` can hold the paper
+           on it. Armed before the src is set, or a cached game could finish
+           loading before anything is listening for it. */
+        const ready = new Promise((done) => {
+          frame.addEventListener("load", done, { once: true });
+        });
+
+        window.playPaperTransition({
+          prepare: () => { frame.src = GAME; },
+
+          covered: () => {
+            frame.hidden = false;
+            document.documentElement.classList.add("is-gaming");
+            return ready;                  /* hold the cover until it is up */
+          },
+
+          done: () => {
+            /* the keyboard belongs to the board now, not to a book behind it */
+            try { frame.contentWindow.focus(); } catch { /* not ours to focus */ }
+          }
+        });
       }
 
       /* back to a closed book: film put away, ready to run again if the reader
@@ -3306,178 +3380,6 @@
                get here() { return there !== false; } };
     })();
 
-    /* ── the jump menu ────────────────────────────────────────────────────
-       Two ways out of the page you are on: skip, which goes forward now
-       without waiting for the words to be read, and the grid, which goes to
-       any page at all.
-
-       The grid is pictures rather than page numbers, because a child who
-       cannot read a number can still recognise a red bicycle. It is built
-       once from PAGES, so it can never offer a page the book does not have,
-       and the thumbnails are the full illustrations — there is no smaller
-       copy of each — so they are marked lazy and fetched only when the panel
-       is first opened rather than on every page load.
-
-       Both actions deliberately ignore the gate that holds the forward arrow
-       back until a page has been read out: leaving the page you are on is the
-       whole purpose of this menu. Skipping counts as being done with the page,
-       so the arrow is there if the reader comes back to it.
-       ------------------------------------------------------------------- */
-    const JumpMenu = (() => {
-      const btn   = $("#jumpBtn");
-      const panel = $("#jumpPanel");
-      const veil  = $("#jumpVeil");
-      const grid  = $("#jumpGrid");
-      const skip  = $("#jumpSkip");
-      const game  = $("#jumpGame");
-      let on = false, built = false;
-      let closed = null;   /* what to tell when the panel shuts */
-
-      function build() {
-        if (built) return;
-        built = true;
-        /* The title page is not offered. It is the home screen, and a tile
-           leading back to it would be the one way left of putting the cover
-           back on screen mid-story — with no Play button on it, because that
-           only shows outside play mode. The pages keep their real indices, so
-           `i` is still what Book.jump wants. */
-        grid.replaceChildren(...PAGES.map((page, i) => {
-          if (i < FIRST) return null;
-
-          const li = document.createElement("li");
-          li.className = "jump__item";
-
-          const pick = document.createElement("button");
-          pick.type = "button";
-          pick.className = "jump__pick";
-          /* the page's own words name it, for a screen reader and for a
-             grown-up hunting a particular moment */
-          const words = page.text ? page.text.hi.replace(/<[^>]*>/g, "") : page.alt.hi;
-          pick.setAttribute("aria-label", `पन्ना ${i + 1}: ${words}`);
-          pick.addEventListener("click", () => { close(); Book.jump(i); });
-
-          const im = document.createElement("img");
-          im.src = page.img;
-          im.alt = "";
-          im.loading = "lazy";
-          im.decoding = "async";
-          im.draggable = false;
-          pick.appendChild(im);
-
-          const no = document.createElement("span");
-          no.className = "jump__no";
-          no.textContent = String(i + 1);
-
-          li.append(pick, no);
-          return li;
-        }).filter(Boolean));
-      }
-
-      /* mark where the reader is, and whether there is anywhere to skip to */
-      function sync() {
-        [...grid.querySelectorAll(".jump__pick")].forEach((p, i) => {
-          if (i === Book.index) p.setAttribute("aria-current", "page");
-          else p.removeAttribute("aria-current");
-        });
-        skip.disabled = Book.index >= Book.total - 1;
-      }
-
-      function open() {
-        if (on) return;
-        on = true;
-        build();
-        sync();
-        panel.hidden = false;
-        veil.hidden = false;
-        /* the class lands a frame later, so the fade has a state to start from */
-        requestAnimationFrame(() => {
-          panel.classList.add("is-open");
-          veil.classList.add("is-open");
-        });
-        btn.setAttribute("aria-expanded", "true");
-        PageAudio.stop();            /* the narration waits rather than talking over this */
-        Finale.warm();               /* a head start on the game, in case they choose it */
-        /* and if the game is not in the project, do not offer it: the probe in
-           Finale answers once the warm-up has been asked for, which is now. */
-        setTimeout(() => { game.hidden = !Finale.here; }, 400);
-        const here = grid.querySelector('[aria-current="page"]') || grid.querySelector(".jump__pick");
-        if (here) here.focus();
-      }
-
-      function close() {
-        if (!on) return;
-        on = false;
-        if (closed) closed();   /* the narration was stopped on open */
-        panel.classList.remove("is-open");
-        veil.classList.remove("is-open");
-        btn.setAttribute("aria-expanded", "false");
-        /* out of the layout only once the fade is done */
-        setTimeout(() => {
-          if (on) return;            /* reopened in the meantime */
-          panel.hidden = true;
-          veil.hidden = true;
-        }, calm() ? 0 : 300);
-        btn.focus({ preventScroll: true });
-      }
-
-      return {
-        get open() { return on; },
-        toggle() { on ? close() : open(); },
-
-        /* Told when the panel goes away. Opening it stops the narration, and
-           with the arrows gone the book turns on that narration finishing —
-           so somebody has to decide what happens to a page the reader
-           interrupted. UI knows whether it had already finished; this module
-           only knows that it closed. */
-        onClose(fn) { closed = fn; },
-        close,
-        start() {
-          btn.addEventListener("click", () => JumpMenu.toggle());
-          veil.addEventListener("click", close);
-
-          skip.addEventListener("click", () => {
-            const from = Book.index;
-            close();
-            heard.add(from);         /* they are done with this page by choice */
-            Book.next();
-          });
-
-          /* Out of the story and into the game. The panel is closed first, the
-             way picking a page does it — it draws above the paper transition,
-             so it has to be on its way out before the sheets arrive. Closing
-             also restarts this page's narration, which openGame then stops:
-             the right order, not a coincidence. */
-          game.addEventListener("click", () => {
-            game.disabled = true;    /* one tap; openGame guards the rest */
-            close();
-            Finale.openGame();
-          });
-
-          /* Escape belongs to the panel while it is open: it must close the
-             panel and nothing else. Play mode listens for Escape on window
-             too, and would otherwise drop the reader out of the story at the
-             same time; the arrow keys would turn pages behind the panel.
-
-             Capture, so this runs first, and stopImmediatePropagation rather
-             than stopPropagation, because plain stopPropagation does not stop
-             another listener on the same node — which is exactly what play
-             mode's is. */
-          window.addEventListener("keydown", (e) => {
-            if (!on) return;
-            if (e.key === "Escape") {
-              e.stopImmediatePropagation();
-              e.preventDefault();
-              close();
-            } else if (e.key.startsWith("Arrow") || e.key === " " ||
-                       e.key === "PageUp" || e.key === "PageDown" ||
-                       e.key === "Home" || e.key === "End") {
-              e.stopImmediatePropagation();   /* Tab still walks the thumbnails */
-            }
-          }, true);
-        }
-      };
-    })();
-
     const HandHint = (() => {
       const el = $("#handHint");
       /* Nine seconds of stillness before the hand appears. It was 4.2s, which
@@ -3492,7 +3394,6 @@
       /* what the reader is waiting to be told to press, if anything */
       function where() {
         if (Book.busy) return null;                       /* mid-turn */
-        if (JumpMenu.open) return null;                   /* choosing a page */
         const cover = document.documentElement.classList.contains("at-cover");
         if (cover && !PlayMode.on) return "start";        /* press Play */
         /* Nothing to point at once the story is running: the pages turn
@@ -3789,22 +3690,9 @@
           else if (i === Book.index) autoTurn(i);
         });
 
-        /* The jump panel stops the narration when it opens. If the reader
-           shuts it again without choosing a page, the page they were on has
-           nothing left to finish it — and the book now turns on that finish,
-           so it would quietly stop instead. A page already heard just needs
-           its beat again; one interrupted mid-sentence says its piece from
-           the top. (A pick or a skip also closes the panel, and lands here
-           first, but the page it moves to binds a moment later and takes the
-           narration over.) */
-        JumpMenu.onClose(() => {
-          if (!PlayMode.on) return;
-          if (heard.has(Book.index)) autoTurn(Book.index);
-          else PageAudio.play();
-        });
-
+        window.__Finale = Finale;
         sync(Book.index, Book.total);
-        JumpMenu.start();
+
 
         /* A way to watch the transition on demand: open the page with ?demo
            and a button appears. It runs the transition over whatever is on

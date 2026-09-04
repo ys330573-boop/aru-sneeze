@@ -29,7 +29,7 @@
 
 <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml" />
 <!-- bump ?v= after editing so a plain refresh never serves a cached copy -->
-<link rel="stylesheet" href="style.css?v=76" />
+<link rel="stylesheet" href="style.css?v=78" />
 <!-- the picture the book opens on, so it is on screen as early as possible -->
 <link rel="preload" as="image" href="assets/images/page-01.webp" />
 </head>
@@ -226,6 +226,33 @@
   </button>
   <div class="sr-only" id="liveHint" aria-live="polite"></div>
 
-  <script src="script.js?v=112" defer></script>
+  <!-- ── The board, in this page ──────────────────────────────────────────
+       The game arrives HERE rather than at its own address. The story used to
+       navigate to game/game.html and the URL changed under the child; now the
+       board is loaded into this frame instead, so the whole thing — cover,
+       story, film, game — lives at one address from beginning to end. Nothing
+       is ever "left".
+
+       IT IS A FRAME AND NOT A MERGE, and the reason is measurable rather than
+       cautious: the two halves both define `.slot` and `.stage`, and both set
+       --ink and --px. The book's `.slot` is a page of the picture book; the
+       game's is a card slot on the board. Poured into one document the book's
+       rules would restyle the board, and the only fix would be renaming things
+       in a game that is meant to stay exactly as it was written. A frame gives
+       the board its own document, so her CSS and her script own it completely
+       and neither half can reach into the other.
+
+       src is left empty on purpose. A frame with a source fetches it on page
+       load; this one is filled at the moment the film ends, so the game's
+       megabyte of script and art costs the story's opening nothing. See
+       Finale.openGame.
+
+       allow="autoplay" passes this page's own permission down. The child has
+       pressed Play by the time the board arrives, so the tab already carries
+       the gesture a browser wants before it lets sound start unasked. -->
+  <iframe class="gameframe" id="gameFrame" title="आरु की छींक — खेल"
+          allow="autoplay; fullscreen" hidden></iframe>
+
+  <script src="script.js?v=116" defer></script>
 </body>
 </html>
