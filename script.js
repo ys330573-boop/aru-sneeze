@@ -1482,7 +1482,24 @@
 
              On the word's ONSET, at 7.15, the jolt was over before any of that
              and read as a separate event from the crash it belongs to. */
+          /* THE SAME धड़ाम! THAT LANDS ON PAGE 11, because it is the same word
+             in the same story: "वह गिर पड़ा धड़ाम!" is this page's last line,
+             and until now the page said it without showing it while page 11
+             showed it. Same burst, same w:32, both low and to the left — two
+             falls that match rather than two that merely rhyme.
+
+             8.05 is where the impact is. She finishes saying "धड़ाम" at 7.99;
+             with the 0.12 lead this lands at 7.93, so the lettering is on the
+             picture as the word ends, the screen jolts at 8.00, the recording's
+             own impact arrives at 8.11 and the crash below at 8.20. The burst
+             leads that group rather than joining it late.
+
+             Measured into the sand at the lower left — his own arc is heading
+             there, and it is the one wide piece of empty ground on the page:
+             the bicycle's rear wheel begins at 48% across and the burst stops
+             short of it. */
           { at: 8, shake: 0.5 },
+          { art: "crash", at: 8.05, out: 9.55, x: 26, y: 76, w: 32 },
           { at: 8.20, sfx: "crash",
             lines: { x: 74, y: 74, dir: -90, n: 4, len: 6.5, burst: true, arc: 150, life: 520 } },
           /* AND THE BOY, 0.35s after the bicycle. Two things hit the road here
@@ -1833,11 +1850,24 @@
       if (!el || el.paused || el.ended) return;
       const mine = ++holdToken;
       el.pause();
-      setTimeout(() => {
+      setTimeout(function go() {
         if (mine !== holdToken) return;         /* another hold took over */
         if (!el.isConnected || el.ended) return;
         if (!el.hasAttribute("src")) return;    /* torn down while we waited */
         if (!el.paused) return;                 /* already going again */
+
+        /* NOBODY IS WATCHING, SO NOBODY IS WAITING. A held frame whose second
+           runs out while the tab is away must not start moving again: the film
+           would play on unseen, reach its end, and hand the reader over to the
+           game they never saw start.
+
+           This is the one case Finale's own tab-switch hold cannot catch. It
+           looks at the film, finds it ALREADY paused — by this hold, a moment
+           ago — and correctly leaves it alone, having nothing to pause. Then
+           this timer fires and undoes the thing it was relying on. So the
+           check belongs here, at the hand that actually restarts it. */
+        if (document.hidden) { setTimeout(go, 200); return; }
+
         const p = el.play();
         if (p && p.catch) p.catch(() => { /* nothing left to do about it */ });
       }, Math.max(0, seconds) * 1000);
