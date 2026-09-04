@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>आरू की छींक — कहानी क्रम</title>
+<!-- Inline, so it costs no request and cannot 404. Every browser asks for
+     /favicon.ico when a page declares no icon, and this one has no icon file to
+     give it.
+
+     The star was drawn to match the post-game completion badge, which has since
+     been removed at the user's request. It stays as the tab icon - it still
+     reads as a gold-star activity, and a favicon is not what was objected to.
+     Do not go looking for .recap-badge to match it against. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23fff3d2'/%3E%3Cpath d='M16 5l3.2 7.7 8.3.7-6.3 5.4 1.9 8.1L16 22.6 8.9 26.9l1.9-8.1-6.3-5.4 8.3-.7z' fill='%23f6b62c'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Baloo 2 is the Devanagari member of the family; Baloo Bhai 2 (Gujarati)
+     has no Hindi glyphs. See the typography note in styles.css. -->
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400..800&family=Baloo+Bhai+2:wght@400..800&display=swap" rel="stylesheet">
+<!-- ...and the QUESTION MARK ONLY, in Roboto SemiBold, at the user's request.
+
+     `text=%3F` IS THE WHOLE TRICK AND IT IS NOT DECORATION. Google answers that
+     with a single @font-face carrying a single glyph, declared
+     `unicode-range: U+3f` - so "Roboto" can lead the font stack in styles.css
+     and still claim nothing but the ?. Every Devanagari letter, both dandas and
+     any Latin go on coming from the Baloo faces above. Drop the parameter and
+     Roboto arrives with its whole Latin set and quietly takes the lot.
+
+     It is its own <link> because `text=` applies to every family in a request,
+     and the Baloo faces need their entire character set.
+
+     wght@600 IS WHERE THE WEIGHT LIVES - the file is a SemiBold instance of
+     Roboto's variable font, and it is the only Roboto face the page has. That is
+     also why styles.css turns weight synthesis off: the banner asks for 700, and
+     an engine that cannot find 700 in a family will smear the 600 sideways and
+     call it bold. See the typography note in styles.css. -->
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@600&text=%3F&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=230">
+</head>
+<body>
+
+<div class="viewport" id="viewport">
+  <!-- Fixed 1920x1080 design canvas, uniformly scaled to fit. All coordinates below
+       are the Figma coordinates from node 130:599 of the LBD section. -->
+  <div class="stage" id="stage">
+
+    <img class="bg" src="assets/images/bg-wood.webp" alt="">
+
+    <div class="banner">
+      <img src="assets/images/banner.webp" alt="">
+    </div>
+
+    <h1 class="prompt" id="prompt"></h1>
+
+    <!-- The clothesline is drawn in CSS (see styles.css); nothing is exported
+         for it any more. It stays anchored to the screen while its twist runs
+         right-to-left, the way a pulley line does. -->
+    <div class="rope" id="rope" aria-hidden="true"></div>
+
+    <!-- One bay = the three hanging frames and their pegs. Bays are hauled off
+         along the rope and replaced between rounds, so the markup lives in a
+         template and app.js mounts as many as the game needs. -->
+    <div class="washline" id="washline"></div>
+
+    <template id="bayTpl">
+      <div class="bay">
+        <!-- One hanger = one peg and the frame swinging under it. Each rides
+             the rope on its own during a haul, so the three of them follow the
+             sag instead of sliding as a block. The peg comes after the frame so
+             it clips over the top of the mat, as in the design. -->
+        <div class="hanger">
+          <div class="slot" data-slot="0" role="button" tabindex="0" aria-label="पहला खाना">
+            <div class="slot-mat"></div>
+            <div class="slot-well"></div>
+          </div>
+          <img class="peg peg-1" src="assets/images/peg.svg" alt="">
+        </div>
+        <div class="hanger">
+          <div class="slot" data-slot="1" role="button" tabindex="0" aria-label="दूसरा खाना">
+            <div class="slot-mat"></div>
+            <div class="slot-well"></div>
+          </div>
+          <img class="peg peg-2" src="assets/images/peg.svg" alt="">
+        </div>
+        <div class="hanger">
+          <div class="slot" data-slot="2" role="button" tabindex="0" aria-label="तीसरा खाना">
+            <div class="slot-mat"></div>
+            <div class="slot-well"></div>
+          </div>
+          <img class="peg peg-3" src="assets/images/peg.svg" alt="">
+        </div>
+      </div>
+    </template>
+
+    <div class="tray"></div>
+
+    <!-- The dust the box throws when it lands. EMPTY: boxDust() in app.js puts
+         one canvas in here and simulates the cloud on it, the way the sneeze's
+         flour and the bicycle's road dust are done.
+
+         It used to be four copies of the painted aaru-dust.png sprite, scaled
+         up and slid outward by a CSS keyframe. The drawing is his LANDING dust
+         - a puff the size of a child's sandals - and four of them blown to 760px
+         along a 1687px slab read as four identical stamps sliding sideways, not
+         as one edge hitting the floor. Nothing about a repeated sprite can say
+         what actually happens under a slab that lands flat: the squeeze film
+         out of the closing gap, the ends punching past the wood, the grains
+         arcing back down while the fine stuff hangs and rises. See the block
+         above boxDust(). -->
+    <div class="box-dust" id="boxDust" aria-hidden="true"></div>
+
+    <!-- Story cards are stacked above everything and moved by JS -->
+    <div class="cards" id="cards"></div>
+
+    <!-- Frame 133:2037 draws the hint as two instances of the one hand.webp: a
+         translucent ghost over the frame the card belongs in, and a solid hand
+         on the card to pick up. The ghost is painted first so it sits behind. -->
+    <img class="hand hand-ghost" id="handGhost" src="assets/images/hand.webp" alt="" hidden>
+    <img class="hand hand-lead"  id="hand"      src="assets/images/hand.webp" alt="" hidden>
+
+    <!-- Aaru, clapping, when a screen is finished. He slides in from the right
+         over the emptied tray, and back out the same way; the line is not
+         hauled until he has gone — see playCelebration() in app.js.
+
+         This is the supplied mp4 with the transparency checkerboard keyed out
+         of its pixels and re-encoded as VP9-with-alpha; tools/dekey-video.py is
+         the recipe and assets/_source/correct_ans.mp4 is what it starts from.
+         `muted` is not a preference here, it is what lets it play without a
+         gesture; the clip has no audio track anyway, and roundDone is already
+         playing over it. -->
+    <!-- ?v= IS NOT DECORATION. Chromium serves a <video> src straight out of
+         its media cache on a plain reload AND in a fresh tab, without sending
+         so much as an If-Modified-Since - measured: after replacing the file
+         at the same URL, both replayed the old bytes and the old
+         videoWidth/videoHeight, and only a hard reload fetched the new ones.
+         The dev server sends no Cache-Control and no ETag, so there is nothing
+         to negotiate with. Both clips are rebuilt from tools/, so without a
+         token in the URL a rebuild is invisible to anyone who has opened the
+         game before - silently, with no error and no way to tell.
+         BUMP THE NUMBER whenever the .webm is rebuilt. -->
+    <video class="celebrate" id="celebrate" src="assets/video/correct_ans.webm?v=32"
+           muted playsinline preload="auto" aria-hidden="true"></video>
+
+    <!-- Aaru arriving on the line, once the last story has been hauled off it
+         and the board is bare. He is hand over hand on the clothesline itself:
+         the clip's own drawn rope has been erased and his fists levelled so
+         that the line in styles.css runs through them — tools/dekey-entry.py
+         is the recipe and has the reasoning. He rides in from the right along
+         the sag and settles at the middle, and then he simply keeps swinging,
+         which is why this one `loop`s and the celebration does not. -->
+    <video class="entry" id="entry" src="assets/video/entry.webm?v=32"
+           muted loop playsinline preload="auto" aria-hidden="true"></video>
+
+    <!-- ?v= ON THESE PNGs, which had none until all three of them moved at once.
+         They are GENERATED assets - tools/cut-finale-poses.py rewrites them
+         whenever the plate or a crop box changes - and Chromium serves an <img>
+         from cache as readily as a <video>. The version protocol covered app.js,
+         styles.css and the two clips, and had never covered these.
+
+         The finale's last two beats. Stills, not clips: the storyboard draws
+         the landing and the cheer but nobody has animated the in-betweens, and
+         the drop and the squash are done in CSS anyway - these only have to be
+         the right shape at the moment each beat arrives.
+
+         Cut from assets/_source/finale-storyboard.png by tools/cut-finale-poses.py,
+         which has the reasoning. Both are here rather than one element whose src
+         is swapped, so that neither can flash on first show. -->
+    <!-- The free fall, shown INSTEAD of the riding clip once he has let go, so
+         he is not drawn gripping a rope that is not in his hands any more. Cut
+         from the storyboard's fourth panel, which had been sitting there uncut;
+         app.js places this one from the arc rather than from CSS, because it has
+         to travel. -->
+    <img class="finale-pose" id="finaleFall"  src="assets/images/aaru-fall2.png?v=44"   alt="" aria-hidden="true">
+    <img class="finale-pose" id="finaleLand"  src="assets/images/aaru-land2.png?v=44"   alt="" aria-hidden="true">
+    <img class="finale-pose" id="finaleCheer" src="assets/images/finale-cheer.png?v=44" alt="" aria-hidden="true">
+    <!-- The last beat: he snaps his fingers, and the sparkle is drawn into the
+         art rather than added in CSS. Held after this - nothing follows it. -->
+    <img class="finale-pose" id="finaleSnap"  src="assets/images/aaru-snap.png?v=44"    alt="" aria-hidden="true">
+
+    <!-- The landing dust, cut out of the landing artwork so it can SPREAD. Frozen
+         into his body it could only ever be a still; on its own layer it puffs out
+         from his feet and thins. Its offset from him is the one the artist drew,
+         not one chosen here. -->
+    <img class="finale-pose" id="finaleDust"  src="assets/images/aaru-dust.png?v=44"    alt="" aria-hidden="true">
+
+    <!-- Velocity-aligned air streaks for the rope ride, free fall and stand-up.
+         app.js drops each mark from Aaru's measured movement, so the lines bend
+         with the rope and lengthen as gravity accelerates him. -->
+    <div class="finale-motion" id="finaleMotion" aria-hidden="true"></div>
+
+    <!-- The sparkle at his fingers on the snap. Drawn here rather than cut from
+         the artwork, because the brief says it APPEARS - and a baked one is
+         present from the pose's first frame, which is not the same thing. -->
+
+    <!-- What makes the drop read as a drop. Both are drawn in CSS - gradients,
+         no art - and both sit on the FLOOR, not on him.
+
+         The shadow is the important one: it grows and darkens as he comes down,
+         and it is the only thing in the frame that says how far below him the
+         ground is. Without it the fall has no depth and no destination.
+         app.js drives it from the same p as the arc; see finaleDrop().
+
+         The dust is three puffs at his feet on impact, which also covers the
+         single frame where the video is swapped for the landing still. -->
+    <!-- The ground shadow under him while he falls, drawn in CSS - gradients, no
+         art. It is the only thing in the frame that says how far below him the
+         floor is, and it grows and darkens as he comes down; app.js drives it
+         from the same p as the arc. It FADES OUT as he lands, because the
+         landing and snap art draw their own.
+
+         There used to be three CSS dust puffs here too. The landing pose has
+         dust drawn into it now, so they would have doubled. -->
+    <div class="finale-shadow" id="finaleShadow" aria-hidden="true"></div>
+
+    <!-- The post game: the story replayed as a sparkling trail across all twelve
+         pictures, and then the celebration around them. Both screens live in
+         this one overlay and app.js drives them - see playPostGame().
+
+         It is placed after the two Aaru videos and before the title screen on
+         purpose: the confetti has to be able to burst in front of him, and
+         nothing may ever cover the title screen.
+
+         Empty until it runs - the confetti is spawned at that point and removed
+         again, so nothing here is drawn during play.
+
+         TWO THINGS HAVE BEEN REMOVED FROM IN HERE, so that anything still
+         referring to them reads as the bug it is: a twelve-card story recap
+         (.recap-grid, .recap-cell) and a completion badge (.recap-badge,
+         #recapBadge, .is-badged). Neither exists. What is in here is the
+         formation's own layers, listed on each of them below. -->
+    <div class="recap" id="recap" hidden aria-hidden="true">
+      <!-- THE POST-GAME FORMATION. Three layers, back to front: the footpath the
+           frames are laid along, the twelve frames, and the sparks off his
+           fingers. All three are filled by app.js and emptied by recapStop(), so
+           the markup is empty on purpose - nothing of this is in the tree during
+           play, and an interrupted formation leaves nothing behind.
+
+           The sparks are the only one of the three in FRONT of him: they come off
+           his hand. The frames pass behind him. -->
+      <div class="post-trail" id="postTrail"></div>
+      <div class="post-line"  id="postLine"></div>
+      <div class="post-ring"  id="postRing"></div>
+      <!-- THE BOY IN THE MIDDLE OF THE RING. Two elements, one shown at a time.
+
+           THE CLIP IS THE ONE THAT SHOULD PLAY. correct_ans.webm is a hand-drawn
+           36-frame clap-and-jump with alpha - his arms open 62px to 135px across,
+           his head rises 49px, his feet leave the ground by 33px, and his mouth
+           and eyes are animated. It has been in the game as the gameplay
+           celebration all along. Frames 8..28 are the part where he stands
+           squarely and claps; the rest is him leaning in and back out.
+
+           THE STILL IS THE FALLBACK, for a browser that plays WebM but not its
+           alpha - which would otherwise hang a grey rectangle in the middle of the
+           ring. Same silhouette, cut from the reference layout by
+           tools/cut-namaste.py, and it gets the CSS hop instead of the clip's own.
+
+           Both sit ABOVE the frames, so a picture riding in passes behind him. -->
+      <video class="post-aaru" id="postAaru" src="assets/video/aaru-clap.webm?v=144"
+             muted playsinline loop preload="auto" aria-hidden="true"></video>
+      <img class="post-aaru" id="postAaruStill"
+           src="assets/images/aaru-namaste.png?v=144" alt="" aria-hidden="true">
+      <div class="post-magic" id="postMagic"></div>
+
+      <!-- SCREEN 1 AND SCREEN 2, from the gameplay sheet. Six more layers, all
+           filled by app.js and emptied by recapStop(), so the markup is empty on
+           purpose like the three above it.
+
+           postFx sits BELOW him and above the pictures: an effect belongs to its
+           picture, and he stands in front of the whole ring. postSpark sits ABOVE
+           him, so the sparkling trail is not cut in half by his shoulder as it
+           passes. postBurst is above the snap's own flash. The two confetti
+           layers straddle him, one under and one over, for the reason in the
+           comment on them.
+
+           THERE IS NO BADGE LAYER, and the sheet asks for one - "a large
+           completion star/badge appears at the end". A 268px badge at the middle
+           of this ring covers the boy standing in it: he is at x 871.8..1044.5,
+           y 346.7..780.1, and it blotted out his face and chest. The user asked
+           for it to be removed. If it ever comes back, put it BEHIND him -
+           z-index 65, over the cards and under him, so the ring of it shows all
+           round his silhouette - rather than shrinking it, because "large" is
+           what the sheet asks for. The favicon star at the top of this file is
+           still the shape it was drawn to. -->
+      <!-- THE CONFETTI, AND IT IS TWO LAYERS BECAUSE PAPER HAS A DEPTH.
+
+           The cannons are behind his back, so most of the burst comes out from
+           behind him and stays there - that is this one, under him at 65. But a
+           piece thrown towards the child crosses him and falls between him and
+           the screen, and a burst where nothing ever does that reads as a
+           painted backdrop rather than as paper in the room. So the simulation
+           carries a z per piece and draws each one on whichever of these two its
+           depth puts it on; see confettiBurst() in app.js.
+
+           BOTH ARE EMPTY UNTIL SCREEN 2. The canvases are made on the first
+           burst and taken away by the last piece leaving the stage. -->
+      <div class="post-conf"  id="postConfBack"></div>
+      <div class="post-fx"    id="postFx"></div>
+      <div class="post-spark" id="postSpark"></div>
+      <div class="post-burst" id="postBurst"></div>
+      <!-- ...and the half of the paper that is in front of him. Above him at 66,
+           above the burst's stars at 74 and above a popped picture at 75, because
+           a piece between the child and the board is in front of ALL of it. -->
+      <div class="post-conf"  id="postConfFront"></div>
+      <!-- THE AIR OVER THE WHOLE STAGE, and the only layer above a popped picture.
+           Card 2's sneeze blows flour out of the frame, and the ask was for some of
+           it to leave the scene - which nothing inside .card-crop can do, that box
+           is overflow:hidden and it is the picture's own edge. So the flour is drawn
+           on one canvas here instead, in stage coordinates, at z-index 78: above the
+           focused ring at 75, above the burst at 74, above him at 66. See
+           flourBlast() in app.js. Empty until then, and emptied by formStop. -->
+      <div class="post-air"   id="postAir"></div>
+    </div>
+
+    <!-- Title screen. It is painted last so it covers the board, and it is the
+         first thing on screen: the story's own artwork with the play button in
+         the open sand under the title. Nothing behind it runs until the button
+         is tapped, which also makes that tap the gesture browsers require
+         before an audio context may be opened — so the opening haul and the
+         first deal are the first sounds the game gets to make. -->
+    <div class="title" id="title">
+      <img class="title-art" src="assets/images/title.webp" alt="आरू की छींक">
+      <button class="play" id="play" type="button" aria-label="खेल शुरू करें">
+        <img class="play-art" src="assets/images/play.svg" alt="">
+      </button>
+    </div>
+
+  </div>
+
+  <!-- WHY THE BOARD IS ON ITS SIDE, said once and then gone. fitStage() turns
+       the canvas a quarter turn on a handheld held upright, because the board is
+       16:9 and an upright phone is not - untitled, that filled the screen but
+       left a child wondering what had gone wrong. This is OUTSIDE .stage and so
+       is NOT turned with it: it is addressed to someone holding the phone
+       upright right now, so upright is the way round they can read it. -->
+  <div class="turn-hint" id="turnHint" hidden aria-hidden="true">
+    <div class="turn-hint-phone"></div>
+    <p class="turn-hint-text">फ़ोन घुमाओ</p>
+  </div>
+
+  <!-- Developer shortcut, revealed only by ?dev=1 (see app.js). It sits OUTSIDE
+       .stage on purpose: the stage is a 1920x1080 canvas scaled to fit, so a
+       control inside it would be scaled with everything else and end up tiny on
+       a small window. Out here it stays a real-sized, real-pixel button. -->
+  <div class="devbar" id="devbar" hidden>
+    <button class="devbtn" id="devSkip" type="button"></button>
+  </div>
+</div>
+
+<script src="app.js?v=230"></script>
+</body>
+</html>

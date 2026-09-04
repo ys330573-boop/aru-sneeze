@@ -2770,9 +2770,8 @@
            did not get. Hold, and hand them a whole one when they are back. */
         if (document.hidden) { due = t + beat; autoTimer = setTimeout(turn, AUTO_TICK); return; }
 
-        /* mid-turn, or they are picking a page out of the menu: wait, do not
-           give up, or the book would simply stop */
-        if (Book.busy || JumpMenu.open) { autoTimer = setTimeout(turn, AUTO_TICK); return; }
+        /* mid-turn: wait, do not give up, or the book would simply stop */
+        if (Book.busy) { autoTimer = setTimeout(turn, AUTO_TICK); return; }
 
         /* held past the moment for one of the reasons above, and now free: go
            the instant the deadline is met rather than at the next tick */
@@ -3305,178 +3304,6 @@
                get here() { return there !== false; } };
     })();
 
-    /* ── the jump menu ────────────────────────────────────────────────────
-       Two ways out of the page you are on: skip, which goes forward now
-       without waiting for the words to be read, and the grid, which goes to
-       any page at all.
-
-       The grid is pictures rather than page numbers, because a child who
-       cannot read a number can still recognise a red bicycle. It is built
-       once from PAGES, so it can never offer a page the book does not have,
-       and the thumbnails are the full illustrations — there is no smaller
-       copy of each — so they are marked lazy and fetched only when the panel
-       is first opened rather than on every page load.
-
-       Both actions deliberately ignore the gate that holds the forward arrow
-       back until a page has been read out: leaving the page you are on is the
-       whole purpose of this menu. Skipping counts as being done with the page,
-       so the arrow is there if the reader comes back to it.
-       ------------------------------------------------------------------- */
-    const JumpMenu = (() => {
-      const btn   = $("#jumpBtn");
-      const panel = $("#jumpPanel");
-      const veil  = $("#jumpVeil");
-      const grid  = $("#jumpGrid");
-      const skip  = $("#jumpSkip");
-      const game  = $("#jumpGame");
-      let on = false, built = false;
-      let closed = null;   /* what to tell when the panel shuts */
-
-      function build() {
-        if (built) return;
-        built = true;
-        /* The title page is not offered. It is the home screen, and a tile
-           leading back to it would be the one way left of putting the cover
-           back on screen mid-story — with no Play button on it, because that
-           only shows outside play mode. The pages keep their real indices, so
-           `i` is still what Book.jump wants. */
-        grid.replaceChildren(...PAGES.map((page, i) => {
-          if (i < FIRST) return null;
-
-          const li = document.createElement("li");
-          li.className = "jump__item";
-
-          const pick = document.createElement("button");
-          pick.type = "button";
-          pick.className = "jump__pick";
-          /* the page's own words name it, for a screen reader and for a
-             grown-up hunting a particular moment */
-          const words = page.text ? page.text.hi.replace(/<[^>]*>/g, "") : page.alt.hi;
-          pick.setAttribute("aria-label", `पन्ना ${i + 1}: ${words}`);
-          pick.addEventListener("click", () => { close(); Book.jump(i); });
-
-          const im = document.createElement("img");
-          im.src = page.img;
-          im.alt = "";
-          im.loading = "lazy";
-          im.decoding = "async";
-          im.draggable = false;
-          pick.appendChild(im);
-
-          const no = document.createElement("span");
-          no.className = "jump__no";
-          no.textContent = String(i + 1);
-
-          li.append(pick, no);
-          return li;
-        }).filter(Boolean));
-      }
-
-      /* mark where the reader is, and whether there is anywhere to skip to */
-      function sync() {
-        [...grid.querySelectorAll(".jump__pick")].forEach((p, i) => {
-          if (i === Book.index) p.setAttribute("aria-current", "page");
-          else p.removeAttribute("aria-current");
-        });
-        skip.disabled = Book.index >= Book.total - 1;
-      }
-
-      function open() {
-        if (on) return;
-        on = true;
-        build();
-        sync();
-        panel.hidden = false;
-        veil.hidden = false;
-        /* the class lands a frame later, so the fade has a state to start from */
-        requestAnimationFrame(() => {
-          panel.classList.add("is-open");
-          veil.classList.add("is-open");
-        });
-        btn.setAttribute("aria-expanded", "true");
-        PageAudio.stop();            /* the narration waits rather than talking over this */
-        Finale.warm();               /* a head start on the game, in case they choose it */
-        /* and if the game is not in the project, do not offer it: the probe in
-           Finale answers once the warm-up has been asked for, which is now. */
-        setTimeout(() => { game.hidden = !Finale.here; }, 400);
-        const here = grid.querySelector('[aria-current="page"]') || grid.querySelector(".jump__pick");
-        if (here) here.focus();
-      }
-
-      function close() {
-        if (!on) return;
-        on = false;
-        if (closed) closed();   /* the narration was stopped on open */
-        panel.classList.remove("is-open");
-        veil.classList.remove("is-open");
-        btn.setAttribute("aria-expanded", "false");
-        /* out of the layout only once the fade is done */
-        setTimeout(() => {
-          if (on) return;            /* reopened in the meantime */
-          panel.hidden = true;
-          veil.hidden = true;
-        }, calm() ? 0 : 300);
-        btn.focus({ preventScroll: true });
-      }
-
-      return {
-        get open() { return on; },
-        toggle() { on ? close() : open(); },
-
-        /* Told when the panel goes away. Opening it stops the narration, and
-           with the arrows gone the book turns on that narration finishing —
-           so somebody has to decide what happens to a page the reader
-           interrupted. UI knows whether it had already finished; this module
-           only knows that it closed. */
-        onClose(fn) { closed = fn; },
-        close,
-        start() {
-          btn.addEventListener("click", () => JumpMenu.toggle());
-          veil.addEventListener("click", close);
-
-          skip.addEventListener("click", () => {
-            const from = Book.index;
-            close();
-            heard.add(from);         /* they are done with this page by choice */
-            Book.next();
-          });
-
-          /* Out of the story and into the game. The panel is closed first, the
-             way picking a page does it — it draws above the paper transition,
-             so it has to be on its way out before the sheets arrive. Closing
-             also restarts this page's narration, which openGame then stops:
-             the right order, not a coincidence. */
-          game.addEventListener("click", () => {
-            game.disabled = true;    /* one tap; openGame guards the rest */
-            close();
-            Finale.openGame();
-          });
-
-          /* Escape belongs to the panel while it is open: it must close the
-             panel and nothing else. Play mode listens for Escape on window
-             too, and would otherwise drop the reader out of the story at the
-             same time; the arrow keys would turn pages behind the panel.
-
-             Capture, so this runs first, and stopImmediatePropagation rather
-             than stopPropagation, because plain stopPropagation does not stop
-             another listener on the same node — which is exactly what play
-             mode's is. */
-          window.addEventListener("keydown", (e) => {
-            if (!on) return;
-            if (e.key === "Escape") {
-              e.stopImmediatePropagation();
-              e.preventDefault();
-              close();
-            } else if (e.key.startsWith("Arrow") || e.key === " " ||
-                       e.key === "PageUp" || e.key === "PageDown" ||
-                       e.key === "Home" || e.key === "End") {
-              e.stopImmediatePropagation();   /* Tab still walks the thumbnails */
-            }
-          }, true);
-        }
-      };
-    })();
-
     const HandHint = (() => {
       const el = $("#handHint");
       /* Nine seconds of stillness before the hand appears. It was 4.2s, which
@@ -3491,7 +3318,6 @@
       /* what the reader is waiting to be told to press, if anything */
       function where() {
         if (Book.busy) return null;                       /* mid-turn */
-        if (JumpMenu.open) return null;                   /* choosing a page */
         const cover = document.documentElement.classList.contains("at-cover");
         if (cover && !PlayMode.on) return "start";        /* press Play */
         /* Nothing to point at once the story is running: the pages turn
@@ -3788,22 +3614,8 @@
           else if (i === Book.index) autoTurn(i);
         });
 
-        /* The jump panel stops the narration when it opens. If the reader
-           shuts it again without choosing a page, the page they were on has
-           nothing left to finish it — and the book now turns on that finish,
-           so it would quietly stop instead. A page already heard just needs
-           its beat again; one interrupted mid-sentence says its piece from
-           the top. (A pick or a skip also closes the panel, and lands here
-           first, but the page it moves to binds a moment later and takes the
-           narration over.) */
-        JumpMenu.onClose(() => {
-          if (!PlayMode.on) return;
-          if (heard.has(Book.index)) autoTurn(Book.index);
-          else PageAudio.play();
-        });
-
         sync(Book.index, Book.total);
-        JumpMenu.start();
+
 
         /* A way to watch the transition on demand: open the page with ?demo
            and a button appears. It runs the transition over whatever is on

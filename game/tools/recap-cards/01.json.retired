@@ -1,0 +1,42 @@
+{
+ "card": "01-house.png",
+ "element": "the brass bell and the iron bracket it hangs from, under the veranda beam",
+ "seed": [
+  217,
+  90
+ ],
+ "t_hi": 120,
+ "t_lo": 40,
+ "pad_box": 3,
+ "pad_patch": 3,
+ "feather": 0.8,
+ "bg_strip": [
+  233,
+  253
+ ],
+ "guard": null,
+ "sweep": null,
+ "close": null,
+ "art": [
+  209,
+  80,
+  258,
+  116
+ ],
+ "unmix": true,
+ "reach_pad": 2,
+ "replay_tol": 0.51,
+ "zoom": 6,
+ "origin": [
+  225.0,
+  80.0
+ ],
+ "motion": [
+  0,
+  0,
+  12,
+  880,
+  "cubic-bezier(.37,0,.63,1)"
+ ],
+ "note": "RETIRED. This entry cuts the VERANDA BELL, and slot 01 no longer animates a bell: the scene became the hunger beat and the user then asked for the closeup zoom to go, which put the bell out of the frame the scene actually shows. 01-house-sprite.png and -patch.png on disk are now HIS FOREARM AND HAND, cut by tools/cut-belly-hand.py, and running cut-recap-sprites.py over slot 01 would overwrite them with the bell again. That is why this file is named 01.json.retired and not 01.json - the merge globs *.json, so a retired card simply does not load. Rename it back only if the bell is wanted, and change tools/cut-belly-hand.py's STEM first so the two do not fight over the same two filenames.\n\nWHAT THE BELL CUT MEASURED, kept because it is a good cut and re-deriving it costs a day:\n\nTHE BELL AND ITS BRACKET COME OUT TOGETHER, and that is not a preference. The bell's base rim touches the bracket's vertical rod at rows 93 and 94 - D2 runs 148, 161, 221, 227 straight across x222..225 - so at any t_hi that holds the bell the two are one connected component, and prising them apart would need a guard, which lives in the script rather than in this file. It reads correctly anyway: the whole hanger swings about its own fixing, which is what the brief asked for.\nTHE PLASTER IS THE EASIEST BACKGROUND IN THE SET and the measurement says so. The strip at x233..253 is flat wall on every row from 79 to 126, with a within-row channel spread of 8 to 16/255, and along the bell's own rows the clean plaster either side sits 2..19 from that median while the bell and the ironwork read 100..240. There is no cast shadow to argue over: the wall immediately right of the bell, x227..233, stays within 26/255 of the median, so all the dark belongs to the bell and travels with it. t_hi=120 makes the assembly ONE component - the tightest link is the top arm, which at row 81 is broken at x218/x219 (D2 106 and 108) and joins only through x220, 157 at row 80 and 170 at row 81. t_lo=40 clears the worst genuinely-plaster reading in the window, 19/255 at (211,92), two to one; everything above 18 elsewhere in the window is the ironwork's own antialiased rim.\nART IS USED AS A WINDOW HERE, not merely as a frame clamp, and it does the work a guard would otherwise do. y0=80 is the load-bearing number and it is worth two reasons. First, the veranda beam above is dark right across the card, so it is one component with the bracket and fill_holes would swallow the roof. Second, row 79 is the beam's underside shadow - 84/255 dark at x215, shading out through 34 at x214 and 13 at x213 - so patching it would cut a 12px bright notch into a line that runs the width of the veranda. Clamping to y>=80 leaves that line alone AND leaves the rod's own top pixel at (225,79), (60,22,8), in the card, which is what keeps the swinging bracket visibly bolted to the beam. x0=209 fences off the veranda post for good: the post's capital reaches x208 at D2 45 and only the clean gap at x209..214 stands between it and the arm. x1=258 and y1=116 keep the doorway and the boy's head out of the row interpolation, which then has 30px of clean plaster to interpolate from on the right of the element and five on the left.\nunmix IS NOT OPTIONAL ON THIS CARD, because spr-swing ENDS AT rotate(0deg) and holds there. The bell comes back to rest exactly over its own patch, so a feathered rim composited patch-then-sprite would leave a pale halo around a dark object on a light wall for as long as the recap is on screen, not for one frame. Solved instead, and patch+sprite at zero offset replays the card BIT-EXACTLY: max 0.00/255 over the box. The price is 136 rim pixels whose alpha had to be raised for gamut, worst +0.248 - unavoidable when the element is 60/255 dark and the plaster behind it is 190 - so the moving bell's edge is about a pixel harder than feather=0.8 asked for. On a dark object over flat plaster that reads as the object rather than as a cut.\nreach_pad=2 because the ironwork's antialiased rim runs two pixels out: (227,82) is 53/255 off the plaster and is rod, not wall, and left standing it draws a faint second bracket beside the moving one. Erasing it costs a ring of 133 pixels where the patch shows field instead of art, and that ring measures 6.9/255 mean and 27/255 worst, a fraction of the outline it prevents. Nothing needs sweeping: there is not one detached fleck above 40 anywhere in the window.\nTHE YOKE'S OPENING TRAVELS INSIDE THE SPRITE and it has to, because the gap between the bell's right flank and the rod is enclosed on all four sides and binary_fill_holes takes it - 34 opaque sprite pixels of plaster across x219..223, y82..96. Same bargain as 04-ride's wheel discs, and safe for the same reason: the field it slides over is flat to 4/255 across the full 20px width of the box (row 88 reads 151 to 155 in green from x210 to x228), and the gap is 9px from the pivot so it never moves more than 1.9px.\nMOTION: a swing, and only a swing - dx and dy are zero because the thing is hinged. The origin (225, 80) is where the rod meets the beam, which on the box (209,77,231,103) is 73% across and 12% down, so app.js wants org '73% 12%'. The 12 degrees comes off the geometry rather than off feel: the rod's bottom tip is 19px below the pivot, so 12 degrees carries it 4.0px, a third of the bell's own 11px width and therefore actually visible, while spr-swing's -0.72 back-swing at -8.6 degrees brings the bell's left corner only to x=210.2 and the veranda post stops at x=206. Do NOT push past about 15 degrees: the back-swing reaches the post, and a rigid iron bracket leaning that far reads as rubber. 880ms and not less, for the reason slot 05 was slowed down - a 4px excursion needs time on screen before a child sees it happen at all."
+}

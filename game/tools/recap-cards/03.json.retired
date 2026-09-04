@@ -1,0 +1,49 @@
+{
+ "card": "03-pot.png",
+ "element": "the steel pot lid he has just lifted off the pot, plus the four fingertips curled over its right rim",
+ "seed": [
+  [
+   222,
+   134
+  ],
+  [
+   244,
+   107
+  ]
+ ],
+ "t_hi": 200,
+ "t_lo": 30,
+ "pad_box": 4,
+ "pad_patch": 3,
+ "feather": 0.8,
+ "bg_strip": [
+  20,
+  55
+ ],
+ "guard": "pot_lid_wall",
+ "sweep": null,
+ "close": 3,
+ "art": [
+  9,
+  9,
+  303,
+  205
+ ],
+ "unmix": true,
+ "replay_tol": 0.51,
+ "zoom": 2,
+ "origin": [
+  248.0,
+  144.0
+ ],
+ "motion": [
+  0,
+  -3,
+  7.0,
+  520,
+  "cubic-bezier(.25,.9,.3,1)"
+ ],
+ "note": "RETIRED. This entry cuts THE LID OF THE POT, and the user asked for it to stop: \"dont cut the cap of the vessel it looks really bad\". They are right, and the reasons are in the drawing rather than in any number below - which is why nothing below was worth tuning further. A curl of his hair hangs over the lid's top corner, so the instant the lid tilts at all a sliver of patch opens under the curl and the curl reads as a fragment floating loose; and the lid's lower edge crosses the rim of the pot, where a single pixel of misregistration between sprite and patch shows as a broken ellipse. Both come from the lid overlapping things it cannot be separated from. The long note this replaces is worth reading if the lid is ever wanted again - it records why the grow needs a wall, why the 24 seeds are there and why the tilt has to go clockwise - and it is kept below as `note_was`. CARD 3'S ACTION IS HIS EYES WIDENING; the lid was only ever there so the card would not be completely still while they did, and the shock lines do that without touching the artwork. 03-pot-sprite.png and -patch.png have been deleted and the manifest's \"03\" entry with them, so tools/sim.js has nothing to check and no reason to warn. To bring it back: rename this file to 03.json, run tools/cut-recap-sprites.py 03, and wire the sprite into SCENE_FX[2].",
+ "hd": 3,
+ "note_was": "The sheet names no element for this card, so the cut is the action: he has just lifted the lid, so the lid is what moves. It goes with THE FOUR FINGERTIPS curled over its right rim, because they are one connected component with it and they are gripping it - the rest of the hand and the whole forearm are painted BEHIND the lid and are not in the cut, and the pot is untouched. WHY THIS ONE NEEDS A WALL: distance from the background cannot separate this lid from the boy, because the lid's bright rim is nearer the sky than the boy is. Row 120 reads shirt 253-297, then a dark contact valley 129-174, then the rim band 50-105, then the lid's face 199-245 - so the low ground is INSIDE the element and the high ground lies between it and the shirt. At any t_lo low enough to keep the 13px rim band the grow walks through the valley into the shirt, and no t_lo from 130 down to 20 leaves the lid alone (the mask goes to 17627px and takes the whole boy). t_hi=150 sits above the valley minimum of 129, which is why the core at 150 is the lid ALONE (2561px, x189..257 y105..167) where at 130 it is boy-plus-lid (16303px). THE GUARD is bike_below_y88 reused as a plain wall - everything confidently foreground below y=88 that is not the lid is the boy or the pot, dilated 2px - and it is the only thing between the grow and his shirt. THE 24 SEEDS are the price of that guard: it is built from hi & ~keep, so every speck of the lid's OWN rim that is above 150 and not connected to the face gets fenced off as if it were the boy, and its 2px dilation then blocks the grow through the rim band beside it. There are 23 such fragments, 1 to 4px each, striations in the rim highlight; seeding them all moves them into keep. Without them 119px of the finished mask land inside the guard where nothing patches them, and element-gone ran 279.6 -> 38.1 -> 0.8 as the seeds, then close, then unmix went in. close=3 is there because the wall bites 2px into the contact valley and a few of those guarded pixels end up enclosed by the mask, where binary_fill_holes claims them; the closing's own & ~guard strips them back out. reach_pad MUST STAY OFF: at reach_pad=2 the reach dilation steps across the wall at (205,118), one unguarded pixel in the middle of the leftover rim, and paints it sky - 100/255 wrong and visible for the whole move - and the gamut raise drops from 404px to 2px without it. KNOWINGLY LEFT BEHIND: a 1px line of the lid's dark contact outline, about 25px long, hugging the shirt where the wall bites. It is the card's own art, so the resting card is bit-exact (patch+sprite max 0.451), and it cannot be patched honestly - what is really behind the lid there is his forearm, and a row-interpolated sky field has no way to invent that. MOTION is a tilt and it has to tilt THIS WAY: +7deg clockwise about his fingers at (248,144) with a 3px lift raises the far end of the lid 6px and drives the sprite about 5px outward across that contact line, so the leftover is covered and 0px of sky-over-shirt is exposed at full travel. Reverse it, -7deg with the far end dropping, and 136px of the patch's sky is uncovered on his shoulder where his arm should be. All the lift actually uncovers is the bottom-left crescent, which is haze and sand and flat along rows - the field's residual against clean art beside the lid is 1.5 median, 4.7 max."
+}

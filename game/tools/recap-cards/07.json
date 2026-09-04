@@ -1,0 +1,24 @@
+{
+  "card": "07-dog.png",
+  "element": "the samosa - golden triangle on the sand at the running dog's snout",
+  "hd": 3,
+
+  "seed": [152, 187],
+  "t_hi": 60,
+  "t_lo": 20,
+  "pad_box": 3,
+  "pad_patch": 3,
+  "feather": 0.8,
+  "bg_strip": [161, 168],
+  "guard": "samosa_wall",
+  "sweep": null,
+  "art": [11, 8, 301, 204],
+  "unmix": true,
+  "replay_tol": 0.51,
+  "zoom": 2,
+  "scale": 0.55,
+  "origin": [139.0, 193.0],
+  "motion": [-12, -3, -10.0, 420, "cubic-bezier(.4,0,.9,.45)"],
+
+  "note": "EVERY NUMBER HERE IS STILL 1x CARD PIXELS. `hd: 3` makes cut() read scratchpad/cards-hd/07-dog.png (932x637 - the same view rendered 3x off the native r3-dog artwork, ~2.4 native pixels per card pixel) and _hd_spec multiplies the coordinate-bearing ones by 3 on the way in; the box comes back divided by 3 because app.js places the sprite by a 1x box and scales the PNG up. WHY HD: the recap pops the card to 3x its ring size, and at 25x27 this was the smallest cut in the set, so it was the worst-looking - a 25px triangle upscaled 3x. The new sprite is 75x81 and the samosa's pastry blisters are actually resolved. NOTHING WAS RETUNED. The thresholds are colour distances and did not move: t_hi=60 still leaves the samosa its own 4-connected component at 3x (its nearest dog pixels sit across the wall), and t_lo=20 still keeps the soft lower-left rim while sand noise stays under it. The seed (152,187) -> HD (456,561) is (255,170,36), solid pastry. bg_strip (161..168) -> HD (483..504) reads (231,184,121) against the 1x strip's (230.6,183.6,120.4) - the same sand to within 1/255, which is the check that the HD render really is the same window. art (11,8,301,204) -> HD (33,24,903,612): the HD frame edge is HARD, not blended, and measures art at x 24..907 / y 24..612 inclusive, so the tripled clamp sits 0-9px INSIDE the real art on every side. That is the safe direction - it can only decline to touch art near the frame, never spill onto the cream - and the samosa runs to HD y=606, six rows clear of the bottom clamp. THE GUARD scales itself off the card width (see _samosa_wall): the wall is at HD x<=416, three HD pixels - one 1x pixel - short of the samosa's leftmost mask column, which is exactly the 1px standoff the 1x cut had. zoom dropped 6 -> 2 because the HD card is already 3x: 2 on top of that is the same 6x on screen the 1x check strip had, and 6 would build an 8000px strip. motion is untouched and still 1x for app.js; _hd_spec triples dx/dy only for the check strip's third panel, so the preview shows the real 12px slide. THE MOVE ITSELF is unchanged: the dog grabs the samosa, so the samosa is what moves - 12px left and 3px up into the open snout while it shrinks to 0.55 about its own left tip, as if taken. The dog stays part of the card. There is no cast shadow to worry about; the sand immediately under the triangle reads <=5/255 from its neighbours, so the dark lower-left edge is the samosa's own shading and travels with it. Do NOT push the slide past ~14px: at -14 the sprite's right edge reaches x=143 and the bare right half of the patch is exposed as flat inpainted sand, and beyond that the shrinking triangle is drawn ON TOP of the dog's nose."
+}

@@ -1,0 +1,43 @@
+{
+ "card": "10-earring.png",
+ "element": "the little boy on the right, bobbing - NOT the locket, which cannot be cut; see the note",
+ "seed": [
+  220,
+  102
+ ],
+ "t_hi": 110,
+ "t_lo": 30,
+ "pad_box": 5,
+ "pad_patch": 4,
+ "feather": 0.8,
+ "bg_strip": [
+  157,
+  176
+ ],
+ "guard": null,
+ "sweep": null,
+ "art": [
+  10,
+  9,
+  302,
+  205
+ ],
+ "unmix": true,
+ "reach_pad": 2,
+ "motion": [
+  0,
+  -3,
+  0.0,
+  620,
+  "cubic-bezier(.34,1.56,.64,1)"
+ ],
+ "note": "THE LOCKET WAS THE BRIEF AND THE LOCKET CANNOT BE CUT. It is not a detection problem, it is a geometry problem, and it fails twice. First, the gem is not against the cream wall: it hangs exactly on the corner where Amma's inner elbow meets the left edge of her yellow sleeve, so on rows 116-123 there is no background pixel on EITHER side of it - cream only reappears at x 35..42 from row 124 down and at x 57..62 from row 120 down. A perfect mask would therefore have nothing to inpaint from: the row interpolation would run from forearm orange (215,120,68) at x=39 straight into sleeve shadow (125,50,6) at x=58 and paint a flat orange ramp across the place where the arm's outline turns into the shoulder. Second, hysteresis cannot hold the gem anyway. Its own refined distance spans 111 (the bright cyan highlight in the middle) to 242, while the pixels it touches read 151-197 on the forearm at x=42 rows 118-122 and 228-235 on the sleeve's dark outline at (54,117) and (55,119) - the neighbours straddle the element, so no threshold pair separates them. Measured: seeding the gem's dark rim at (53,122) and growing, t_lo=208 keeps 35px (rim only, the gem's middle is still missing), t_lo=205 has already taken 117px out to x=68 in the sleeve, and t_lo=195 spans x42..73. To reach the gem's own 111 the grow would have to pass 111, and every threshold search from 120 to 260 either loses most of the gem or swallows the woman. The cord is worse than the gem: its left strand lies ON the forearm's outline from row 70 down, and the loose tail from (47,99) to (33,102) is painted across the arm, so patching the cord would gouge cream out of her arm. No guard fixes this and none was added - guards live in the script and this card owns only its JSON.\nSO THIS CARD MOVES THE BOY, who is the only element on it with real background on all sides. He stands clear: cream from x 153..184 on his left and x 244..297 on his right on every row he occupies, and the wall behind him is flat ALONG ROWS, which is the condition this method needs - x=175 and x=258 agree to 4/255 at y=110 and to 18/255 at y=150 where the soft floor line crosses, so the interpolation has real information across the 70px gap. Residual in clean wall came out at a median of 0.9/255. Isolation is easy and, unusually, insensitive: the core at t_hi=110 is already one component and the grow is on a PLATEAU - 5622px at t_lo=60 against 5797px at t_lo=22, a 3% spread, because he is painted sharp on flat wall with no texture to leak into. t_lo has to sit at 30, not in the 45-60 range the plateau first suggested, and the reason is his t-shirt: the white stripes are BRIGHTER than the wall but barely further from it, reading 20-46 on the refined distance, so at t_lo=45 the white wedge on his right sleeve at x236..239 y186..190 dropped out of the mask. It opens onto the silhouette, so binary_fill_holes cannot close it and it came through as an 11px hole of alpha 0.16 - a hole punched in his sleeve that shows wall through it as soon as he moves. close=5 also covers it, but t_lo=30 covers it for free: the mask claims 39 definitely-wall pixels (d2<12) at t_lo=30 against 38 at t_lo=45, while close=5 costs 66, so dropping the threshold is the cheaper of the two. 30 is still 3.5x the wall's own p99 of 8.6. art is set because his t-shirt runs off the bottom of the card: the paint stops at row 204 and col 301, and without the clamp the white frame washes the per-row background out over his last rows.\nMOTION: he has just been handed back the locket, so he bobs - 3px up and settle, no rotation. Do NOT rotate this sprite: it is cropped by the card frame at the bottom like 04-ride, so any tilt swings his cut-off waist away from the frame edge and opens a wedge of inpainted floor.\nVERIFIED: patch+sprite at zero offset replays the card to a mean of 0.004 and a max of 0.45/255, which is pure 8-bit quantisation, so replay_tol=0.51 is asserted rather than merely printed. Element-gone came out at 0.9 against wall noise of ~8, i.e. nothing of him is left under the patch. Composited at DOUBLE the recommended bob, 6px, there is still no rim, no seam and no halo, and the sprite on a magenta ground shows no wall-coloured fringe.\nTHE ONE THING THIS CUT LEAVES BEHIND is row 205, the 1px blend where the art meets the white frame: art stops at 205 exclusive, so a_patch is zeroed there and that row keeps a 60%-white blend of his shirt, up to 26/255 off clean wall across 76px. It does not move with him, so it is not a ghost of a moving element, and at 1x behind the rounded frame it is invisible. Extending art to 206 to cover it is the wrong fix and was tried: row 205 is bright, so the grow escapes along the frame ring and the box goes from 86x120 to 134x121, running out to x=307 past the right edge of the art - which is exactly the failure the module docstring warns about.",
+ "replay_tol": 0.51,
+ "hd": 3,
+ "art_hd": [
+  27,
+  27,
+  906,
+  613
+ ]
+}

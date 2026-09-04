@@ -1,0 +1,47 @@
+{
+ "card": "02-sneeze.png",
+ "hd": 3,
+ "element": "the steel lid spinning out of his hand - a metal disc seen nearly edge-on, over sky and sand",
+ "seed": [
+  [
+   211,
+   170
+  ],
+  [
+   212,
+   185
+  ],
+  [
+   230,
+   155
+  ],
+  [
+   236,
+   162
+  ]
+ ],
+ "t_hi": 45,
+ "t_lo": 34,
+ "pad_box": 4,
+ "pad_patch": 3,
+ "feather": 0.8,
+ "bg_strip": [
+  264,
+  292
+ ],
+ "guard": null,
+ "sweep": null,
+ "close": null,
+ "unmix": true,
+ "reach_pad": 2,
+ "replay_tol": 0.51,
+ "zoom": 6,
+ "motion": [
+  14,
+  12,
+  32.0,
+  520,
+  "cubic-bezier(.36,0,.7,.35)"
+ ],
+ "note": "t_hi IS 45 AND WAS 90, and the reason is that this card's artwork was replaced. tools/upres-round-cards.py re-exported r1-sneeze.webp from output/figma-exact-10/scene-02.png at 2x, so the HD render this cuts from went from 2.4 to 4.8 source pixels per card pixel - and on the sharper plate the seed at (230,155) reads d2 49.9 where it used to clear 90, because the lid's soft rim resolves into real gradient instead of one blurred step. 45 is under that and still well over the haze; the verification did not move (replay max 0.490 against the same 0.51 ceiling, element-gone 0.8 against sky noise of 8). t_lo STAYS AT 34 - everything the old note says about the window between the flour haze and the drawn arcs is still true. THE BOX MOVED with the re-cut, (199,149,242,192) -> (199,148,252,192), and app.js carries the new one.\n\nCut the LID only. The flour cloud stays in the card: it is diffuse, it has no edge to cut along, and it is already animated as particles - and when the lid flies out of it the puff reads as the cloud it was knocked out of, which is the right picture anyway. The drawn swoosh arcs to the lid's right stay in the card too, for the same reason and one more: they are the trail, and the motion below sends the lid down the curve they describe. BACKGROUND. bg_strip is x 264..292, the widest column that is clean sky-over-sand on every row the lid touches. It has to begin past x=259 because the arcs reach x=258, and a strip that clipped them would pull the per-row colour bright on exactly the rows that matter. Residual off that field is 8/255 on the sand right of the arcs and 14/255 in the sky. WHAT IS AWKWARD HERE is not the lid, it is the pale flour haze the lid sits in: within a few pixels of the element the haze reads 20..64 from the field, which overlaps the lid's own soft rim, so the window on t_lo is narrow and was measured rather than guessed. At 34 the mask is 672px and stops at x=237, the lid's true right edge. At 30 it bridges into the bright arc over the sand at (243,171), d2 61, and the box runs out to x=246 with 23px of arc riding in the sprite. At 42 it drops the lid's own dark right lobe. So 34, and close is deliberately OFF: at 34 the mask is already solid - closing at 3, 5 and 7 all return the same 672px against the 667px it cuts with no closing at all - and a closing is precisely what would bridge the haze to the arc if a threshold ever drifted. THE FOURTH SEED is the interesting number. The far edge of the disc, the dark grey crescent at x 235..238 y 158..165, is joined to the body of the lid by ONE pixel, (235,158) at d2 39; between them at rows 160..161 runs a specular highlight that reads only 18..29 from the field, i.e. indistinguishable from the haze. Lose that one pixel and the crescent is a separate component, a single seed drops it, and a grey remnant stands on the sand while the lid flies off - which is what the first cut of this card did. The seed at (236,162) unions it back in whatever the threshold does; the other three sit in the left rim, the bottom tip and the top-right tip. unmix with reach_pad=2 because the lid's rim is antialiased into that bright glow over 2-3px and every such pixel left carrying its card value is a standing outline of the lid. The patch then alters 985px, all of them inside the silhouette, and NOTHING where the sprite's alpha is 0, so there is no rectangle to find; replay at zero offset is 0.451/255 max. MOTION: it carries on the way it left his hand - 14px right, 12px down, 32 degrees clockwise over 520ms on an accelerating ease. A fall. The spin swings the disc's long axis from -45 to -13 degrees so it flattens as it drops, which reads as landing; rotating the other way stands it on edge instead. Do not push much past this - travel plus spin already puts the lower rim at y=193 and the right edge at x=256, and the art stops at y=202, x=297."
+}

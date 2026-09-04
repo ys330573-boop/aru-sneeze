@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Responsive check · आरु की छींक</title>
+<!--
+  A viewport rig for the book. Open it and every target size is rendered at
+  once, in an iframe of exactly that many CSS pixels, with the numbers that
+  decide whether a layout is right underneath each one.
+
+  IFRAMES RATHER THAN A RESIZED WINDOW, and that is the whole point of the
+  file. A browser window cannot be driven below about 500px on Windows, and
+  headless Chrome silently clamps --window-size the same way — so "testing at
+  375px" by resizing the window quietly tests something else and reports that
+  it passes. An iframe is given the width it is asked for.
+
+  Nothing here is part of the book. It loads ../index.html unmodified.
+-->
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; padding: 16px;
+    background: #23201c; color: #efe6d8;
+    font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  h1 { font-size: 15px; font-weight: 600; margin: 0 0 4px; }
+  p.lede { margin: 0 0 18px; color: #b3a695; max-width: 70ch; }
+  .grid { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+  .cell { background: #17150f; border-radius: 10px; padding: 8px; }
+  .cell > h2 { font-size: 12px; font-weight: 600; margin: 0 0 6px; color: #f0c987; }
+  iframe { border: 0; display: block; background: #000; border-radius: 4px; }
+  .stat { margin-top: 6px; font-size: 11px; color: #b3a695; white-space: pre; }
+  .ok   { color: #86c98b; }
+  .warn { color: #e8b64c; }
+  .bad  { color: #e8705c; }
+  button {
+    font: inherit; background: #3a342b; color: #efe6d8;
+    border: 1px solid #554c40; border-radius: 7px; padding: 6px 12px; cursor: pointer;
+  }
+  button:hover { background: #474034; }
+  .bar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+
+<h1>Responsive check</h1>
+<p class="lede">
+  Every size is a real iframe of exactly those CSS pixels, loading
+  <code>../index.html</code> untouched. Green means the layout holds: the
+  picture keeps 16:9, nothing overflows, nothing is cut off, and the controls
+  stay big enough to tap. Press <em>enter play mode</em> to re-measure in the
+  state a reader is actually in.
+</p>
+
+<div class="bar">
+  <button id="play">enter play mode in every frame</button>
+  <button id="remeasure">re-measure</button>
+  <span id="summary"></span>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<script>
+const SIZES = [
+  [375, 667,  "iPhone SE · portrait"],
+  [390, 844,  "iPhone 12/13 · portrait"],
+  [412, 915,  "Pixel · portrait"],
+  [768, 1024, "iPad · portrait"],
+  [1024, 768, "iPad · landscape"],
+  [1280, 720, "laptop 720p"],
+  [1366, 768, "laptop 768p"],
+  [1440, 900, "laptop 900p"],
+  [1920, 1080,"desktop 1080p"],
+  [667, 375,  "iPhone SE · landscape"],
+  [844, 390,  "iPhone 12 · landscape"],
+  [915, 412,  "Pixel · landscape"]
+];
+
+/* the desktop grid would be enormous at full scale, so the big ones are drawn
+   at a fraction — the iframe still LAYS OUT at its true pixel size, which is
+   what is being measured; only the picture of it is shrunk */
+const shrink = (w) => (w > 1100 ? 0.5 : w > 900 ? 0.7 : 1);
+
+const grid = document.getElementById("grid");
+const frames = [];
+
+for (const [w, h, label] of SIZES) {
+  const cell = document.createElement("div");
+  cell.className = "cell";
+  const z = shrink(w);
+  cell.innerHTML =
+    '<h2>' + w + ' × ' + h + '  ·  ' + label + (z < 1 ? '  (shown at ' + (z * 100) + '%)' : '') + '</h2>';
+  const wrap = document.createElement("div");
+  wrap.style.cssText = 'width:' + (w * z) + 'px; height:' + (h * z) + 'px; overflow:hidden';
+  const f = document.createElement("iframe");
+  f.width = w; f.height = h; f.src = "../index.html";
+  f.style.cssText = 'transform:scale(' + z + '); transform-origin: 0 0';
+  wrap.appendChild(f);
+  cell.appendChild(wrap);
+  const stat = document.createElement("div");
+  stat.className = "stat";
+  stat.textContent = "loading…";
+  cell.appendChild(stat);
+  grid.appendChild(cell);
+  frames.push({ f, stat, w, h, label });
+}
+
+function measure() {
+  let pass = 0, total = 0;
+  for (const { f, stat, w, h } of frames) {
+    total++;
+    let d, win, de;
+    try { d = f.contentDocument; win = f.contentWindow; de = d.documentElement; }
+    catch (e) { stat.innerHTML = '<span class="bad">cannot read frame — serve over http, see below</span>'; continue; }
+    const fr = d.querySelector(".book__frame");
+    if (!fr) { stat.textContent = "loading…"; continue; }
+
+    const r = fr.getBoundingClientRect();
+    const ratio = r.width / r.height;
+    const hov = de.scrollWidth  - de.clientWidth;
+    const vov = de.scrollHeight - de.clientHeight;
+    const off = (r.x < -1) || (r.right > de.clientWidth + 1) ||
+                (r.y < -1) || (r.bottom > de.clientHeight + 1);
+    const fills = Math.round(100 * r.width * r.height / (de.clientWidth * de.clientHeight));
+
+    /* the smallest thing a finger has to hit */
+    let tap = Infinity;
+    for (const sel of ["#startBtn", "#jumpBtn", "#nextBtn", "#prevBtn"]) {
+      const e = d.querySelector(sel); if (!e) continue;
+      const cs = win.getComputedStyle(e);
+      if (cs.display === "none" || cs.visibility === "hidden" || +cs.opacity < 0.02) continue;
+      tap = Math.min(tap, Math.round(e.getBoundingClientRect().width));
+    }
+    if (!isFinite(tap)) tap = 0;
+
+    const stretched = Math.abs(ratio - 16 / 9) > 0.03;
+    const good = !stretched && !off && hov === 0 && vov === 0 && (tap === 0 || tap >= 44);
+    if (good) pass++;
+
+    const cls = (b) => b ? "ok" : "bad";
+    stat.innerHTML =
+      'picture  ' + Math.round(r.width) + '×' + Math.round(r.height) +
+      '   fills ' + fills + '% of screen\n' +
+      '<span class="' + cls(!stretched) + '">aspect ' + ratio.toFixed(3) + (stretched ? "  STRETCHED" : "  ✓") + '</span>' +
+      '   <span class="' + cls(hov === 0 && vov === 0) + '">overflow ' + hov + '/' + vov + (hov || vov ? "  SCROLLS" : "  ✓") + '</span>\n' +
+      '<span class="' + cls(!off) + '">' + (off ? "CUT OFF" : "fully on screen ✓") + '</span>' +
+      '   <span class="' + cls(tap === 0 || tap >= 44) + '">smallest control ' + (tap || "—") + 'px' + (tap && tap < 44 ? "  TOO SMALL" : "  ✓") + '</span>';
+  }
+  document.getElementById("summary").innerHTML =
+    pass === total
+      ? '<span class="ok">' + pass + '/' + total + ' sizes pass</span>'
+      : '<span class="warn">' + pass + '/' + total + ' sizes pass</span>';
+}
+
+document.getElementById("remeasure").onclick = measure;
+document.getElementById("play").onclick = () => {
+  for (const { f } of frames) {
+    try { f.contentDocument.querySelector("#startBtn").click(); } catch (e) { /* not ready */ }
+  }
+  setTimeout(measure, 2000);
+};
+
+/* first measurement once everything has settled, then a couple of retries for
+   the frames that were still decoding artwork */
+setTimeout(measure, 2500);
+setTimeout(measure, 5000);
+setTimeout(measure, 9000);
+</script>
+</body>
+</html>

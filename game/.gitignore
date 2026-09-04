@@ -1,0 +1,37 @@
+# Playwright MCP scratch output. Regenerates on every browser-driven run;
+# .mcp.json points --output-dir out of the project, but older sessions and
+# other clients can still drop it here.
+.playwright-mcp/
+
+# The render bench writes cue .wav files straight into assets/sfx,
+# which ARE tracked - they are the deliverable. It writes nothing else.
+
+# Frame-by-frame intermediates from tools/dekey-video.py and tools/dekey-entry.py.
+# Normally deleted at the end of a run; DEKEY_KEEP=1 leaves them behind, which is
+# how the keying gets checked and how CRF gets swept without paying for it again.
+__pycache__/
+tools/_dekey_work/
+tools/_entry_work/
+
+# Windows / OneDrive
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# tools/build-picker.js renders every candidate cue to a .wav and writes a page
+# that plays them, so a disputed sound can be chosen by double-clicking a file
+# instead of running a server. It is ~17MB of generated audio for one decision,
+# and it is rebuilt from the sources whenever it is needed:
+#     python tools/serve.py 8011 & node tools/build-picker.js 8011
+tools/pick/
+
+# Figma reference exports. 105MB of PNG that nothing in the game or the tools
+# reads - styles.css and tools/upres-round-cards.py mention output/figma-exact-10
+# in PROSE, as the provenance of a card's artwork, and neither opens it. Re-export
+# from Figma if a card ever has to be re-cut from source.
+output/
+
+# Intermediate pose renders from tools/cut-pose-assets.py and the bench's report.
+# Both are rebuilt by the tool that wrote them.
+tools/_pose_*.png
+tools/_bench-report.json

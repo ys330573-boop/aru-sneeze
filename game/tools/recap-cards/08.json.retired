@@ -1,0 +1,38 @@
+{
+  "card": "08-home.png",
+  "element": "the whole boy - Aaru walking home with the flour packet hugged to his chest, arms, shorts and both sandals in one piece",
+  "seed": [
+    180,
+    72
+  ],
+  "t_hi": 60,
+  "t_lo": 22,
+  "pad_box": 5,
+  "pad_patch": 4,
+  "feather": 0.8,
+  "bg_strip": [
+    218,
+    282
+  ],
+  "guard": null,
+  "sweep": null,
+  "close": null,
+  "art": [
+    8,
+    8,
+    302,
+    204
+  ],
+  "unmix": true,
+  "reach_pad": 2,
+  "replay_tol": 0.51,
+  "motion": [
+    3,
+    -4,
+    0.0,
+    520,
+    "cubic-bezier(.45,.05,.55,.95)"
+  ],
+  "note": "THE BRIEF ASKED FOR THE FLOUR PACKET AND WARNED IT MAY BE IMPOSSIBLE; IT IS, AND I CUT THE WHOLE BOY INSTEAD. Behind the packet is his own striped t-shirt, his forearm and his hand, and the packet is bounded on every side by him - so a patch there would have to invent the red-and-white stripe pitch across a 25x45 hole and no row interpolation can do that. Cutting the boy off the wall is the opposite problem, and it is the flattest background in the set: sampled at y=60/80/100/120/140/160/175/190, the untouched wall 20px to his LEFT (x112..131) and the untouched wall to his RIGHT (x216..280) agree to within 7/255 on every row, so the row interpolation has real information on both sides and reconstructs the wall and the wall-to-floor gradient rather than smearing them. Checked against a reference the cutter does not know about - a straight per-row line drawn between those two clean spans - the patched wall deviates by mean 2.3/255, p99 6.5, max 8.9, while GENUINE untouched wall in the 4px gutters either side of him deviates from that same line by mean 2.0, p99 7.2, max 9.0. The patch is inside the measurement noise of real paint. ISOLATION IS FREE HERE: the boy is painted sharp on flat wall, so the box is unchanged for t_lo anywhere in 12..40 and t_hi anywhere in 45..100 - t_hi=60/t_lo=22 sit in the middle of that plateau rather than on an edge. bg_strip stops at x=282 because the card's rounded top-right and bottom-right corner blends live at x>=283 on rows 9 and 204 and would drag white into the per-row median. art=(10,9,301,205) is measured on this card: x=9 and x=301, y=8 and y=205 are the cream frame's blend rows, and the clamp is what keeps the patch ramp off the white border under his sandals. close is DELIBERATELY OFF: closing bridges the wall wedge between his thighs below the shorts hem (x167..170, y157..165) into the mask, so the sprite carries 20px of wall that then travels with him - harmless over flat wall, but err_c is 0.86 either way and there are no slivers to swallow, so the honest mask is the better one. THERE IS NO CAST SHADOW: at 8x the floor runs flat right up to both soles, within 3/255 of its neighbours, so lifting him leaves nothing orphaned on the ground. MOTION: a walking bob - 4px up and 3px forward (he faces right, away from the doorway) over 520ms, eased in and out so it reads as one step rather than a hop. Do NOT rotate this sprite: the transform origin defaults to the box centre and he is 151px tall, so even 2deg swings his sandals 2-3px sideways off a floor that has no shadow to hide the slide. HD PASS (hd=3, reads scratchpad/cards-hd/08-home.png, 932x637). Everything above was measured on the 310x212 screenshot crop and multiplies straight up by 3; the only number that did NOT was `art`, which changed from (10,9,301,205) to (8,8,302,204). REASON: on the screenshot the cream frame is antialiased, so x=9/301 and y=8/205 are blend pixels and art had to be pulled inside them. The HD card is not a screenshot - make-hd-cards.py pastes the resampled artwork onto a flat white card, so the frame is a HARD edge and the art box is exactly rows 24..612, cols 24..907 (verified: (23,23) is 255,255,255 and (24,24) is 236,205,172; row 613 and col 908 are the first white ones). Scaling the old art up would have given y1=615, i.e. two rows of pure white INSIDE the art rect, which feeds white into _row_background's bottom clamp and lets the patch ramp onto the border - the exact failure the 1x clamp existed to stop. (8,8,302,204)*3 = (24,24,906,612) sits one row/two columns inside the true art on the far side and exactly on it at the near side, and it has to be a multiple of 3 because _hd_spec multiplies rather than measures. zoom is dropped: the check strip is already 2820px wide at 3x and he is 249px tall in it, so there is nothing left to magnify. The 1x box that goes to app.js is unchanged in meaning - _hd_spec's snap makes the HD box divide by 3 exactly, so the sprite is the same rectangle at three times the resolution. MEASURED AT 3x: box (393,159,645,612) hd -> (131,53,215,204) at 1x, sprite and patch 252x453 where the 1x pass gave 83x151, so the resolution really tripled. (b) mean 0.006 / max 0.494 asserted under replay_tol 0.51; (c) element gone 0.86 against a noise floor of ~8. The wall reference from the 1x note, redone at 3x: the patched wall deviates from a per-row line between the clean spans x336..393 and x648..840 by mean 1.51, p99 5.76, max 9.70, while GENUINE untouched wall in the 6px hd gutters either side of him deviates from that same line by mean 1.06, p99 5.18, max 7.29 - still inside the noise of real paint, and tighter than the 1x pass managed. The card frame is provably untouched: |patched - original| is exactly 0 on every row >= 613, every row < 24 and every column outside 24..907. THE ONE NUMBER THAT MOVED is the box's right edge, 214 -> 215: _hd_spec's outward snap plus 3x resolution finds his soft right rim one 1x pixel further out (hd xmax 627ish vs 1x 208). app.js SCENE_FX slot 08 still carries 214 and has to be updated to 215 or tools/sim.js's drift check will report it - which is exactly what that check is for.",
+  "hd": 3
+}

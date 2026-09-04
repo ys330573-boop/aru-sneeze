@@ -1,0 +1,65 @@
+{
+ "card": "09-sneeze-r4.png",
+ "hd": 3,
+ "element": "the whole spill of steel coming off the shelves - three tumblers, the small lid, the katori, and the long tawa with its red knob",
+ "seed": [
+  [
+   220,
+   107
+  ],
+  [
+   258,
+   105
+  ],
+  [
+   273,
+   114
+  ],
+  [
+   196,
+   113
+  ],
+  [
+   204,
+   165
+  ],
+  [
+   270,
+   142
+  ],
+  [
+   282,
+   138
+  ]
+ ],
+ "t_hi": 90,
+ "t_lo": 40,
+ "pad_box": 4,
+ "pad_patch": 3,
+ "feather": 0.8,
+ "bg_strip": [
+  178,
+  189
+ ],
+ "guard": null,
+ "sweep": null,
+ "close": null,
+ "art": [
+  9,
+  8,
+  301,
+  204
+ ],
+ "unmix": true,
+ "reach_pad": 1,
+ "replay_tol": 0.51,
+ "zoom": 2,
+ "motion": [
+  1,
+  5,
+  12.0,
+  480,
+  "cubic-bezier(.36,0,.7,.35)"
+ ],
+ "note": "SEVEN SEEDS FOR SIX PIECES. This is the card multi-seed was added for, and the seeds are not the obvious visual centres: the tumblers are lit steel, so their bright highlight bands read as only 47-51 from the wall - a seed on one fails at any usable t_hi. Each seed is instead placed on the piece's darkest interior (d2 251-306), which lets t_hi sit at 90 with room to spare. The tawa and its red knob are one connected component, so the seventh seed is redundant insurance in case a re-tune raises t_hi past the knob's 230. THE WALL IS AS EASY AS PROMISED - flat cream, d2 median 1.6 and p99 5.9 over a clean block - and there are NO cast shadows under the utensils to argue about: the ring 1-3px outside the finished patch reads d2 mean 3.0, so the metal sits straight on the wall. t_lo IS THE WHOLE FIGHT, and not because of the wall. The left shelf bracket hangs to y=99 and the middle tumbler starts at y=92, so the two pass within 4px, and the gap between them is not clean wall - it is the SHELF'S OWN CAST SHADOW, reading d2 25-51. At t_lo=28 the grow crosses it and swallows both shelves (mask 6026px, box up to y=66); at 30 it does not. Above 30 the mask is a plateau - 3437px at t_lo=30 down to 3281px at 58 - which is the proof that everything in that band is shadow and not metal, because the steel edges are steep enough that 28 units of threshold move the silhouette by well under a pixel. t_lo=40 sits in the middle of that plateau: 10 clear of the leak, and it leaves the shelf shadow in the card where it belongs. The six pieces come out as six separate blobs, which is why no guard is needed - nothing has to be fenced off, the threshold does it. art is measured on this card and is load-bearing at the BOTTOM: the painted picture runs to row 203 and col 300 (row 204 is the frame blend), and the default (14,12,w-13,h-11) would clamp at row 201 and leave the tawa's last three rows standing in the card as a stub. reach_pad=1 rather than 0 because at 0 a faint dotted outline of the katori and the tawa's blade survives outside the patch - the ghost this file exists to prevent - and rather than 2 because the second pixel doubles the only real blemish here for nothing. THE ONE BLEMISH, stated plainly: rows 89-100 lie in the shelves' shadow band, and the second-pass field blocks only the mask, so the row interpolation there samples the dark bracket wood at x 206-220 and 267-282 and comes out too dark under the tumbler tops. Measured on pixels where the truth is known - clean wall in the original that the patch changed - 440 px move at all, mean 7.9/255, 8 px over 24 and 4 over 32, worst 42, all of it inside 20x9 px of an already soft grey shadow. It reads at 7x as a faint arch echoing the tumbler outline and is not findable at 1x. It cannot be tuned out from a card file: the fix is a guard walling the brackets out of the second-pass field, and guards live in the script. MOTION: drop, and the frame decides the numbers. The tawa's tip is already at row 202, one pixel off the bottom of the art, and the card clips at the cream frame rather than at the art, so any net descent at that tip paints grey blade onto the white border. Under a rigid transform the tip is also the leftmost low point, so a clockwise turn is the only thing that buys any drop at all: it lifts the tip while the heavy red knob end plunges, and the measured trade is exactly half a pixel of safe dy per degree. 12 degrees and dy=5 spends that: the knob falls 13px, the lid 9, the brass tumbler 6, while the katori and the left tumbler rise under 3px and the tip lands on row 203 - on the art, not on the frame. Do NOT raise dy without raising the rotation with it, and do not rotate the other way: anticlockwise sends the knob up.  HD PASS (hd:3). Every number above is a 1x number and the cutter's _hd_spec multiplies the coordinate-bearing ones by 3 at cut time, so nothing here was retuned - t_hi 90 / t_lo 40 / replay_tol are colour distances and stay put, and they hold: the six pieces still come out as six separate blobs from the seven seeds, mask 29808 hd px (~3312 at 1x, i.e. the same silhouette), b mean 0.007 / max 0.498 under the 0.51 assert, c 0.9 against a noise floor of 8. Sprite is now 333x360 where it was 109x120. THE BLEMISH DECLARED ABOVE IS GONE, and it went away for a reason worth writing down: it was the row interpolation in the shelves' shadow band reaching sideways into the dark brackets for want of clean samples (440 px moved, mean 7.9, worst 42). At 3x each row carries three times the samples and the second-pass block dilation is 9 HD px rather than 9 card px, so the field is rebuilt from wall that is genuinely close by. Re-measured the same way - patch vs truth on wall the patch fully owns but did not have to invent - 1672 px, mean 3.07, p99 7.0, worst 8.1, nothing over 24. The guard that was prescribed as the fix is not needed. THE BOX GREW 2px AT 1x: [190,88,299,208] -> [190,88,301,208]. app.js line 5265 still carries the old one and must be updated or tools/sim.js will call it drift. Two of those pixels are real - the HD cut resolves the tawa knob's soft right rim that the screenshot had smeared into the wall - and the box is snapped to whole 1x pixels so the PNG is exactly 3x the box app.js scales it into. MOTION UNCHANGED and re-verified at HD, which matters because the tip clearance was always sub-pixel: with dy=5 and 12 degrees the moved sprite's visible ink (>8/255) stops at 1x row 203.0 and the art runs to 204, so the blade still lands on the picture and not on the cream frame. zoom dropped 3 -> 2 only because the check strip's top row is already 3x; the pieces are inspected at 1:1 there."
+}

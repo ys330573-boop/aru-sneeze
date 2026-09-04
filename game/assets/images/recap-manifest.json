@@ -1,0 +1,390 @@
+{
+ "01-belly": {
+  "box": [
+   223,
+   162,
+   243,
+   177
+  ],
+  "cut_by": "tools/cut-belly-hand.py",
+  "element": "his forearm and hand, resting on his stomach",
+  "err_b": 87.16,
+  "err_c": 120.0,
+  "err_rest": 0.393,
+  "file": "01-belly",
+  "motion": [
+   0,
+   0,
+   9.0,
+   1180,
+   "cubic-bezier(.37,0,.63,1)"
+  ],
+  "org_pct": [
+   30.0,
+   31.1
+  ],
+  "origin": [
+   229.0,
+   166.7
+  ],
+  "scale": 1.0
+ },
+ "02": {
+  "box": [
+   199,
+   148,
+   252,
+   192
+  ],
+  "err_b": 0.016,
+  "err_c": 0.83,
+  "file": "02-sneeze",
+  "motion": [
+   14,
+   12,
+   32.0,
+   520,
+   "cubic-bezier(.36,0,.7,.35)"
+  ],
+  "origin": null,
+  "scale": 1.0
+ },
+ "03-eye-l": {
+  "box": [
+   170,
+   69,
+   192,
+   91
+  ],
+  "cut_by": "tools/cut-belly-hand.py",
+  "element": "his right eye (the viewer's left) - white, iris, pupil and lash",
+  "err_b": 21.443,
+  "err_c": 0.0,
+  "err_rest": 0.037,
+  "file": "03-eye-l",
+  "motion": [
+   0,
+   0,
+   0.0,
+   1500,
+   "cubic-bezier(0.34,0,0.2,1)"
+  ],
+  "org_pct": [
+   54.5,
+   51.5
+  ],
+  "origin": [
+   182.0,
+   80.3
+  ],
+  "scale": 1.0
+ },
+ "03-eye-r": {
+  "box": [
+   202,
+   74,
+   220,
+   96
+  ],
+  "cut_by": "tools/cut-belly-hand.py",
+  "element": "his left eye (the viewer's right) - white, iris, pupil and lash",
+  "err_b": 143.815,
+  "err_c": 0.0,
+  "err_rest": 0.418,
+  "file": "03-eye-r",
+  "motion": [
+   0,
+   0,
+   0.0,
+   1900,
+   "cubic-bezier(.2,1.1,.3,1)"
+  ],
+  "org_pct": [
+   53.7,
+   56.1
+  ],
+  "origin": [
+   211.7,
+   86.3
+  ],
+  "scale": 1.0
+ },
+ "04": {
+  "box": [
+   72,
+   9,
+   250,
+   210
+  ],
+  "err_b": 0.003,
+  "err_c": 0.86,
+  "file": "04-ride",
+  "motion": [
+   7,
+   -2,
+   0.0,
+   620,
+   "cubic-bezier(.2,.85,.3,1)"
+  ],
+  "origin": null,
+  "scale": 1.0
+ },
+ "05": {
+  "box": [
+   83,
+   21,
+   232,
+   132
+  ],
+  "err_b": 0.62,
+  "err_c": 106.99,
+  "file": "05-fall",
+  "motion": [
+   2,
+   13,
+   8.0,
+   420,
+   "cubic-bezier(.36,0,.7,.35)"
+  ],
+  "origin": null,
+  "scale": 1.0
+ },
+ "06": {
+  "box": [
+   198,
+   154,
+   241,
+   201
+  ],
+  "err_b": 0.33,
+  "err_c": 0.0,
+  "file": "06-cart",
+  "motion": [
+   0,
+   0,
+   -11.0,
+   520,
+   "cubic-bezier(.34,1.5,.64,1)"
+  ],
+  "origin": [
+   231.0,
+   193.0
+  ],
+  "scale": 1.0
+ },
+ "07": {
+  "box": [
+   135,
+   178,
+   160,
+   206
+  ],
+  "err_b": 0.011,
+  "err_c": 0.8,
+  "file": "07-dog",
+  "motion": [
+   -12,
+   -3,
+   -10.0,
+   420,
+   "cubic-bezier(.4,0,.9,.45)"
+  ],
+  "origin": [
+   139.0,
+   193.0
+  ],
+  "scale": 0.55
+ },
+ "08-eye-l": {
+  "box": [
+   176,
+   91,
+   186,
+   99
+  ],
+  "cut_by": "tools/cut-belly-hand.py",
+  "element": "his right eye (the viewer's left), on the sad walk home",
+  "err_b": 12.186,
+  "err_c": 0.0,
+  "err_rest": 0.043,
+  "file": "08-eye-l",
+  "motion": [
+   0,
+   0,
+   0.0,
+   1500,
+   "cubic-bezier(.4,0,.6,1)"
+  ],
+  "org_pct": [
+   50.0,
+   90.0
+  ],
+  "origin": [
+   181.0,
+   98.2
+  ],
+  "scale": 1.0
+ },
+ "08-eye-r": {
+  "box": [
+   190,
+   94,
+   199,
+   101
+  ],
+  "cut_by": "tools/cut-belly-hand.py",
+  "element": "his left eye (the viewer's right), on the sad walk home",
+  "err_b": 23.333,
+  "err_c": 0.0,
+  "err_rest": 0.086,
+  "file": "08-eye-r",
+  "motion": [
+   0,
+   0,
+   0.0,
+   1500,
+   "cubic-bezier(.4,0,.6,1)"
+  ],
+  "org_pct": [
+   50.0,
+   90.0
+  ],
+  "origin": [
+   194.5,
+   100.3
+  ],
+  "scale": 1.0
+ },
+ "09": {
+  "box": [
+   190,
+   88,
+   301,
+   208
+  ],
+  "err_b": 0.007,
+  "err_c": 0.85,
+  "file": "09-sneeze-r4",
+  "motion": [
+   1,
+   5,
+   12.0,
+   480,
+   "cubic-bezier(.36,0,.7,.35)"
+  ],
+  "origin": null,
+  "scale": 1.0
+ },
+ "10-aaru": {
+  "box": [
+   181,
+   92,
+   267,
+   169
+  ],
+  "cut_by": "tools/warp-masks.py",
+  "drift": [
+   0,
+   3
+  ],
+  "element": "Aaru's head, tipping shyly as the locket is handed back",
+  "file": "10-aaru",
+  "kind": "warp",
+  "motion": "shy",
+  "org_pct": [
+   49.2,
+   98.5
+  ],
+  "origin": [
+   223.33,
+   167.83
+  ],
+  "swing": -3.5
+ },
+ "10-eye-l": {
+  "box": [
+   208,
+   132,
+   222,
+   146
+  ],
+  "cut_by": "tools/cut-belly-hand.py",
+  "element": "his right eye (the viewer's left) - white, iris, pupil and lash",
+  "err_b": 38.088,
+  "err_c": 0.0,
+  "err_rest": 0.219,
+  "file": "10-eye-l",
+  "motion": [
+   0,
+   0,
+   0.0,
+   1300,
+   "cubic-bezier(.4,0,.6,1)"
+  ],
+  "org_pct": [
+   50.0,
+   88.0
+  ],
+  "origin": [
+   215.0,
+   144.3
+  ],
+  "scale": 1.0
+ },
+ "10-eye-r": {
+  "box": [
+   229,
+   137,
+   244,
+   151
+  ],
+  "cut_by": "tools/cut-belly-hand.py",
+  "element": "his left eye (the viewer's right) - white, iris, pupil and lash",
+  "err_b": 37.239,
+  "err_c": 0.0,
+  "err_rest": 0.302,
+  "file": "10-eye-r",
+  "motion": [
+   0,
+   0,
+   0.0,
+   1300,
+   "cubic-bezier(.4,0,.6,1)"
+  ],
+  "org_pct": [
+   50.0,
+   88.0
+  ],
+  "origin": [
+   236.5,
+   149.3
+  ],
+  "scale": 1.0
+ },
+ "10-gem": {
+  "box": [
+   38,
+   112,
+   57,
+   130
+  ],
+  "cut_by": "tools/warp-masks.py",
+  "drift": [
+   0,
+   0
+  ],
+  "element": "the blue gem of Amma's locket, on its cord",
+  "file": "10-gem",
+  "kind": "warp",
+  "motion": "sway",
+  "org_pct": [
+   49.1,
+   0.0
+  ],
+  "origin": [
+   47.33,
+   112.0
+  ],
+  "swing": 12.0
+ }
+}

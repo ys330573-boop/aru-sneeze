@@ -1,0 +1,45 @@
+{
+ "card": "04-ride.png",
+ "element": "Aaru and the whole bicycle - the biggest cut in the set",
+ "hd": 3,
+ "seed": [
+  165,
+  60
+ ],
+ "t_hi": 110,
+ "t_lo": 80,
+ "pad_box": 5,
+ "pad_patch": 4,
+ "feather": 0.8,
+ "bg_strip": [
+  20,
+  52
+ ],
+ "guard": null,
+ "addon": "ride_wheel_discs",
+ "close": 7,
+ "sweep": null,
+ "art": [
+  10,
+  9,
+  302,
+  204
+ ],
+ "unmix": true,
+ "reach_pad": 2,
+ "replay_tol": 45.0,
+ "motion": [
+  7,
+  -2,
+  0.0,
+  620,
+  "cubic-bezier(.2,.85,.3,1)"
+ ],
+ "note": "EVERY NUMBER HERE IS 1x CARD PIXELS. `hd: 3` makes the cutter read the 932x637 render of this same view out of scratchpad/cards-hd/ and scale them itself, and divide the reported box back down - see _hd_spec. Do not pre-multiply anything.\n\nWHY HD. The recap pops this card to 3x, and a sprite cut from the 310x212 card was being upscaled from a source with no more detail. The bicycle is the biggest cut in the set (175x200 of a 310x212 card), so it was also the most visibly pixelated. Measured before cutting: downscale the HD card to 311x212 and it matches the old 1x crop to a median of 1/255, best at an offset of -0.5 card px, so a 1x coordinate really is 3x an HD one and the tuned numbers move over intact. The card's drawn cream frame is the one thing that does NOT: the HD render insets it 24px (=8 card px) where the browser's is 10 left and right. 3x of art lands at (30,27,906,612) and the BOTTOM ROW of that is load-bearing here, because the front tyre runs off the picture: HD rows 24..612 are art and 613 is a hard cut to pure 255 white, no blend row at all, so `inside` has to run through 612 and art's y1 must be 613 - which 3x of an integer cannot be. Left at 612 the cut leaves HD row 612 outside `inside`, and a 140px dark line of tyre (54,31,7 against 229,182,118 sand) stands still at the bottom of the patched card while the bicycle rides away. Measured, then fixed with art_hd. art_hd is otherwise 3x art exactly; the top clamp is not load-bearing (the hair stops at HD y=42) and neither are the sides.\n\nThe brief warned this cut would probably fail because the patch has to invent sky, sand and a dust plume across 165x190 of a 310x212 card. It does not fail, and the reason is measurable: this background is flat ALONG ROWS. Sampled at y=40/100/120/160, x=40 and x=270 agree to within 4/255 in the sky and 20/255 through the haze, so the row interpolation has real information to work with and reconstructs the horizon rather than smearing it. Ring residual (patch vs untouched art where the alpha ramp starts) came out at 2-4/255 over most of the outline. SUBJECT ISOLATION was the easy part: the boy and bike are painted sharp on a bokeh background, so distance from the row field separates them by a mile - the core at t_hi=110 is already one connected component and the grow to 80 only picks up soft edges. t_lo must stay ABOVE ~75: the soft contact shadow under the tyres sits at 40-75 and is deliberately left in the card, because a shadow belongs to the ground, not to the bicycle. THRESHOLDS DID NOT MOVE FOR HD and must not - they are colour distances, and the HD render is the same paint at more samples. close=7 swallows the shirt-highlight slivers that open onto the silhouette; the bell's chrome fleck is a disc in the addon rather than a sweep, because the bell is bicycle and has to move rather than vanish.\n\nMOTION: a forward surge, +7px x with a 2px bob, easing out. Do NOT rotate this sprite - it is the full bike, and it is cropped by the card frame at the bottom, so any rotation swings the tyres off their contact shadow.",
+ "art_hd": [
+  30,
+  27,
+  906,
+  613
+ ]
+}

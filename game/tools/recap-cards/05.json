@@ -1,0 +1,16 @@
+{
+ "card": "05-fall.png",
+ "element": "Aaru himself, airborne off the bicycle",
+ "hd": 3,
+ "seed": [165, 50],
+ "t_hi": 55,
+ "t_lo": 22,
+ "pad_box": 4,
+ "pad_patch": 3,
+ "feather": 0.8,
+ "bg_strip": [18, 46],
+ "guard": "bike_below_y88",
+ "sweep": [10, 60],
+ "motion": [2, 13, 8.0, 420, "cubic-bezier(.36,0,.7,.35)"],
+ "note": "EVERY NUMBER HERE IS A 1x CARD COORDINATE. `hd: 3` is the only thing that moved in the resolution pass - the cutter reads scratchpad/cards-hd/05-fall.png (932x637, rendered 3x from assets/rounds/r2-fall.webp at ~2.4 native px per card px) and _hd_spec multiplies the lengths for me, so this file stays readable against the 310x212 card everyone else measures on. Thresholds stay put: t_hi/t_lo are RGB distances, not lengths. Cut the BOY only - the bicycle tips over separately at lower right and stays part of the card. His wrist passes ~3px (9 HD px) from the handlebar grip, which is what the guard is for; _bike_below_y88 scales its own split line off the card height. The thin sneeze-spray arc off his mouth is NOT in the sprite: it is 1px of near-sky white and it breaks into dashes, so the grow cannot follow it. sweep erases those flecks with the patch - airborne spray, not part of him, and vanishing beats sitting still while he drops. sweep's max_px is an AREA so the cutter squares the factor for it."
+}

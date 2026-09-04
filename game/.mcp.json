@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "C:\\Users\\Ananya Goswami\\AppData\\Roaming\\npm\\playwright-mcp.cmd",
+      "args": [
+        "--headless",
+        "--output-dir",
+        "C:\\Users\\Ananya Goswami\\AppData\\Local\\Temp\\playwright-mcp"
+      ]
+    }
+  }
+}
