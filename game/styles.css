@@ -992,12 +992,13 @@ html, body {
    briefly quickened to 620 on the theory that two slow swells read as breathing
    where a fast pair reads as one knock, and the user rejected that outright -
    "the pulse effect is too fast. Keep the speed the same as it was." What was
-   wrong was the count, not the speed. Two beats is 3s of ring in total.
+   wrong was the count, not the speed. It is one beat now — see the rule below;
+   two was 3s of ring in total.
 
    `both` IS WHAT KEEPS THE FRAME MARKED AFTERWARDS. The 0% and 100% keyframes
    are the quiet 4px ring, not nothing (see frame-ring), so holding the last
-   frame leaves the outline up for good and the two beats are what draws the eye
-   to it once. Without the fill the ring would vanish when the pair finished and
+   frame leaves the outline up for good and the beat is what draws the eye
+   to it once. Without the fill the ring would vanish when it finished and
    the frame in turn would be unmarked for the rest of its turn.
 
    IT REPLAYS ON EVERY TURN, AND ONLY THEN. A CSS animation restarts when the
@@ -1005,7 +1006,7 @@ html, body {
    again each time she stops speaking - so the knock repeats exactly when there
    is news, and a classList.toggle that changes nothing restarts nothing. */
 /* THE MARK AND THE KNOCK ARE TWO DIFFERENT THINGS, and splitting them is what
-   makes the beats happen once.
+   makes the beat happen once.
 
    .is-active is the frame in turn and it comes and goes constantly - off every
    time she opens her mouth, on again when she stops. A CSS animation restarts
@@ -1023,12 +1024,23 @@ html, body {
   box-shadow: 0 0 0 4px rgba(72, 184, 255, 0.30),
               0 0 14px 4px rgba(72, 184, 255, 0.14);
 }
+/* ONE BEAT, NOT TWO. The count was 2 — a pair of 1500ms beats, 3s of ring in
+   all. It is 1 now, at the same 1500ms, so the frame swells once and settles.
+   Only the count changed: the duration, the easing and `both` are untouched, so
+   the beat is the same speed it always was and still holds the quiet ring at
+   the end.
+
+   It still cannot happen twice on the same frame, for the reason below: the
+   knock hangs on .is-knock, which the knocked WeakSet in app.js adds once per
+   frame element and never again. A wrong answer repaints the board and puts
+   .is-active back — that is the still ring, which is not animated — but it
+   cannot bring the beat back with it. */
 .slot.is-knock .slot-mat {
-  animation: frame-ring 1500ms ease-in-out 2 both,
-             frame-lift 1500ms ease-in-out 2 both;
+  animation: frame-ring 1500ms ease-in-out 1 both,
+             frame-lift 1500ms ease-in-out 1 both;
 }
 .slot.is-knock .slot-well {
-  animation: frame-lift 1500ms ease-in-out 2 both;
+  animation: frame-lift 1500ms ease-in-out 1 both;
 }
 /* SHE INTERRUPTED IT: PAUSED, NEVER CANCELLED. If a line starts partway through
    the two beats the motion has to stop - nothing pulses while she talks - but

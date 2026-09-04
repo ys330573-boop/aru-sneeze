@@ -3146,7 +3146,7 @@
       const GAME = "game/game.html?start=1";
       const WARM_FETCH = [
         "game/game.html",
-        "game/styles.css?v=231",
+        "game/styles.css?v=232",
         "game/app.js?v=230"
       ];
       const WARM_ART = [

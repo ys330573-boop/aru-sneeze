@@ -2801,8 +2801,9 @@
            did not get. Hold, and hand them a whole one when they are back. */
         if (document.hidden) { due = t + beat; autoTimer = setTimeout(turn, AUTO_TICK); return; }
 
-        /* mid-turn: wait, do not give up, or the book would simply stop */
-        if (Book.busy) { autoTimer = setTimeout(turn, AUTO_TICK); return; }
+        /* mid-turn, or they are picking something out of the menu: wait, do
+           not give up, or the book would simply stop */
+        if (Book.busy || JumpMenu.open) { autoTimer = setTimeout(turn, AUTO_TICK); return; }
 
         /* held past the moment for one of the reasons above, and now free: go
            the instant the deadline is met rather than at the next tick */
@@ -3146,7 +3147,7 @@
       const GAME = "game/game.html?start=1";
       const WARM_FETCH = [
         "game/game.html",
-        "game/styles.css?v=230",
+        "game/styles.css?v=232",
         "game/app.js?v=230"
       ];
       const WARM_ART = [
@@ -3266,13 +3267,36 @@
         window.playPaperTransition({
           prepare: () => { frame.src = GAME; },
 
+          /* The screen is paper. The board is brought into the page here and
+             LEFT INVISIBLE — `hidden` off so it lays out, loads and paints, and
+             .is-veiled holding it at opacity 0 so none of that is seen.
+
+             It must not simply be shown at this point, which is what it used to
+             do and was wrong: the frame sits at z-index 100 and the paper at 20,
+             so an un-veiled board draws OVER the sheets and the whole exit
+             happens behind it, never seen. The transition looked like it ended
+             the moment it finished covering.
+
+             It cannot be moved under the paper instead — the book's own
+             controls sit at z 28-30, and a frame below them would have the menu
+             button drawn on top of the game. So the frame stays above and the
+             veil does the timing.
+
+             Returning `ready` holds the cover until the board has loaded, so
+             what comes next is never a frame still fetching. */
           covered: () => {
             frame.hidden = false;
-            document.documentElement.classList.add("is-gaming");
-            return ready;                  /* hold the cover until it is up */
+            frame.classList.add("is-veiled");
+            return ready;
           },
 
+          /* The last sheet has gone. NOW the game. Dropping the veil is a
+             paint, not a layout — the board has been sitting there fully built
+             for the length of the exit — so it arrives in one frame with
+             nothing to load and nothing to reflow. */
           done: () => {
+            frame.classList.remove("is-veiled");
+            document.documentElement.classList.add("is-gaming");
             /* the keyboard belongs to the board now, not to a book behind it */
             try { frame.contentWindow.focus(); } catch { /* not ours to focus */ }
           }
@@ -3380,6 +3404,129 @@
                get here() { return there !== false; } };
     })();
 
+    /* ── the menu ──────────────────────────────────────────────────────────
+       Two buttons, and they are the two things the arrows cannot do: go on now
+       without waiting to be read to, and leave for the game.
+
+       IT HELD A GRID OF EVERY PAGE and does not any more. Thumbnails of all
+       thirteen pictures are a grown-up's idea of navigation — a table of
+       contents — and the arrows already move one page at a time, which is the
+       pace a story is read at. Dropping it also takes with it the one thing in
+       here that was expensive: the tiles were the full illustrations, there
+       being no smaller copy of each, so opening the panel used to pull the
+       whole book down the wire.
+
+       Both buttons deliberately ignore the gate that holds the forward arrow
+       back until a page has been read out: leaving the page you are on is the
+       whole purpose of this panel. Skipping counts as being done with the page,
+       so the arrow is there if the reader comes back to it. */
+    const JumpMenu = (() => {
+      const btn   = $("#jumpBtn");
+      const panel = $("#jumpPanel");
+      const veil  = $("#jumpVeil");
+      const skip  = $("#jumpSkip");
+      const game  = $("#jumpGame");
+      let on = false;
+      let closed = null;   /* what to tell when the panel shuts */
+
+      function sync() {
+        skip.disabled = Book.index >= Book.total - 1;
+      }
+
+      function open() {
+        if (on) return;
+        on = true;
+        sync();
+        panel.hidden = false;
+        veil.hidden = false;
+        /* the class lands a frame later, so the fade has a state to start from */
+        requestAnimationFrame(() => {
+          panel.classList.add("is-open");
+          veil.classList.add("is-open");
+        });
+        btn.setAttribute("aria-expanded", "true");
+        PageAudio.stop();            /* the narration waits rather than talking over this */
+        Finale.warm();               /* a head start on the game, in case they choose it */
+        /* and if the game is not in the project, do not offer it: the probe in
+           Finale answers once the warm-up has been asked for, which is now. */
+        setTimeout(() => { game.hidden = !Finale.here; }, 400);
+        /* the first thing a keyboard lands on is the first thing in the panel */
+        (skip.disabled ? game : skip).focus({ preventScroll: true });
+      }
+
+      function close() {
+        if (!on) return;
+        on = false;
+        if (closed) closed();   /* the narration was stopped on open */
+        panel.classList.remove("is-open");
+        veil.classList.remove("is-open");
+        btn.setAttribute("aria-expanded", "false");
+        /* out of the layout only once the fade is done */
+        setTimeout(() => {
+          if (on) return;            /* reopened in the meantime */
+          panel.hidden = true;
+          veil.hidden = true;
+        }, calm() ? 0 : 300);
+        btn.focus({ preventScroll: true });
+      }
+
+      return {
+        get open() { return on; },
+        toggle() { on ? close() : open(); },
+
+        /* Told when the panel goes away. Opening it stops the narration, and
+           the book turns on that narration finishing — so somebody has to
+           decide what happens to a page the reader interrupted. UI knows
+           whether it had already finished; this module only knows that it
+           closed. */
+        onClose(fn) { closed = fn; },
+        close,
+
+        start() {
+          btn.addEventListener("click", () => JumpMenu.toggle());
+          veil.addEventListener("click", close);
+
+          skip.addEventListener("click", () => {
+            const from = Book.index;
+            close();
+            heard.add(from);         /* they are done with this page by choice */
+            Book.next();
+          });
+
+          /* Out of the story and into the game, through the very same door the
+             ending uses — Finale.openGame, which runs the paper transition and
+             brings the board up in the frame in this page. The panel is closed
+             first because it draws above that transition and has to be on its
+             way out before the sheets arrive. Closing also restarts this page's
+             narration, which openGame then stops: the right order, not a
+             coincidence. */
+          game.addEventListener("click", () => {
+            game.disabled = true;    /* one tap; openGame guards the rest */
+            close();
+            Finale.openGame();
+          });
+
+          /* Escape belongs to the panel while it is open, and the arrow keys
+             must not turn pages behind it. Capture, so this runs before the
+             book's own key handling, and stopImmediatePropagation rather than
+             stopPropagation, because plain stopPropagation does not stop
+             another listener on the same node. */
+          window.addEventListener("keydown", (e) => {
+            if (!on) return;
+            if (e.key === "Escape") {
+              e.stopImmediatePropagation();
+              e.preventDefault();
+              close();
+            } else if (e.key.startsWith("Arrow") || e.key === " " ||
+                       e.key === "PageUp" || e.key === "PageDown" ||
+                       e.key === "Home" || e.key === "End") {
+              e.stopImmediatePropagation();   /* Tab still walks the buttons */
+            }
+          }, true);
+        }
+      };
+    })();
+
     const HandHint = (() => {
       const el = $("#handHint");
       /* Nine seconds of stillness before the hand appears. It was 4.2s, which
@@ -3394,6 +3541,7 @@
       /* what the reader is waiting to be told to press, if anything */
       function where() {
         if (Book.busy) return null;                       /* mid-turn */
+        if (JumpMenu.open) return null;                   /* the menu is open */
         const cover = document.documentElement.classList.contains("at-cover");
         if (cover && !PlayMode.on) return "start";        /* press Play */
         /* Nothing to point at once the story is running: the pages turn
@@ -3690,9 +3838,22 @@
           else if (i === Book.index) autoTurn(i);
         });
 
+        /* The menu stops the narration when it opens. If the reader shuts it
+           again without choosing either button, the page they were on has
+           nothing left to finish it — and the book turns on that finish, so it
+           would quietly stop instead. A page already heard just needs its beat
+           again; one interrupted mid-sentence says its piece from the top.
+           (Skip and the game button also close the panel, and land here first,
+           but what they do next takes the narration over.) */
+        JumpMenu.onClose(() => {
+          if (!PlayMode.on) return;
+          if (heard.has(Book.index)) autoTurn(Book.index);
+          else PageAudio.play();
+        });
+
         window.__Finale = Finale;
         sync(Book.index, Book.total);
-
+        JumpMenu.start();
 
         /* A way to watch the transition on demand: open the page with ?demo
            and a button appears. It runs the transition over whatever is on

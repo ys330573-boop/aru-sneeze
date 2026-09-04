@@ -29,7 +29,7 @@
 
 <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml" />
 <!-- bump ?v= after editing so a plain refresh never serves a cached copy -->
-<link rel="stylesheet" href="style.css?v=78" />
+<link rel="stylesheet" href="style.css?v=80" />
 <!-- the picture the book opens on, so it is on screen as early as possible -->
 <link rel="preload" as="image" href="assets/images/page-01.webp" />
 </head>
@@ -225,6 +225,50 @@
     paper transition
   </button>
   <div class="sr-only" id="liveHint" aria-live="polite"></div>
+
+  <!-- ── The menu ─────────────────────────────────────────────────────────
+       Two ways out of the page you are on, and no way to any other. It held a
+       grid of every page as a thumbnail once; that is gone, because picking a
+       page out of a list is a grown-up's idea of navigation and the arrows
+       already do it one page at a time, which is the pace the story is read
+       at. What is left is the two things the arrows cannot do.
+
+       The button lives outside the book so it is reachable from every page. -->
+  <button class="jumpbtn" id="jumpBtn" type="button"
+          aria-label="मेन्यू" aria-expanded="false" aria-controls="jumpPanel">
+    <span class="jumpbtn__bars" aria-hidden="true"><i></i><i></i><i></i></span>
+  </button>
+
+  <div class="jumpveil" id="jumpVeil" hidden></div>
+
+  <nav class="jump" id="jumpPanel" aria-labelledby="jumpTitle" hidden>
+    <h2 class="jump__title" id="jumpTitle">क्या करें?</h2>
+
+    <!-- skip: go on now, without waiting for the page to be read out -->
+    <button class="jump__skip" id="jumpSkip" type="button"
+            aria-label="पढ़े जाने का इंतजार किए बिना अगला पन्ना">
+      <span class="jump__skip-ico" aria-hidden="true"><i></i><i></i></span>
+      आगे बढ़ो
+    </button>
+
+    <!-- The way into the game, for a child who does not want to sit through
+         the story and the film first. The film hands over by itself when it
+         ends (see Finale.openGame); this is the same door, opened early — and
+         it is the same door in the literal sense too, since it calls that very
+         function, so the board arrives in the page under the paper exactly as
+         it does at the proper ending.
+
+         It stays at the foot, below the skip, because it is the one thing here
+         that leaves the story rather than moving about inside it, and it should
+         not be the first thing a thumb finds. -->
+    <div class="jump__foot">
+      <button class="jump__game" id="jumpGame" type="button"
+              aria-label="कहानी छोड़कर खेल शुरू करो">
+        <span class="jump__game-ico" aria-hidden="true"></span>
+        खेल खेलो
+      </button>
+    </div>
+  </nav>
 
   <!-- ── The board, in this page ──────────────────────────────────────────
        The game arrives HERE rather than at its own address. The story used to
