@@ -8037,24 +8037,36 @@ function render() {
     `filled` and slotEls, and does nothing at all when there is no bay yet. */
 let activeArm = null;             // the short wait before a frame starts pulsing
 
-/* WHICH FRAMES HAVE ALREADY KNOCKED. A frame gets its two beats ONCE, on the
-   turn it becomes the child's, and never again - not when she stops speaking,
-   not after a wrong answer, not after three of them: "the pulse effect on the
-   frame should happen only once. Even if I have selected wrong answers, it
-   shouldn't pulsate again."
+/* WHETHER THE BOARD HAS KNOCKED YET. The two beats happen ONCE - once in the
+   whole session, on the first frame that becomes the child's - and never again:
+   not when she stops speaking, not after a wrong answer, not after three of
+   them, not when the next frame's turn comes, and not on the next screen.
+   "Blue pulse effect in the white frame will only come once, even if we select
+   a wrong scene it wont pulse the 2nd time."
+
+   IT WAS A WeakSet OF FRAME ELEMENTS, and that is a weaker promise than the one
+   being asked for: once PER FRAME. Correct by that rule, a screen still beats
+   three times and the next screen three more, because every screen builds a
+   fresh bay from the template and a fresh frame is an element the set has never
+   seen. That is why the same ask came back a second time in the same words. A
+   single flag is the rule as written, and it needs no lifecycle: there is one
+   game per page load - startGame() returns early if `started` - so a replay is
+   a reload, which clears this with everything else.
 
    THIS IS WHY THE KNOCK IS NOT ON .is-active. That class comes off every time
    she opens her mouth and goes back on when she stops, and a CSS animation
    restarts when its class arrives - so hanging the beats on it made them replay
-   on every speech boundary in the game. .is-knock is added once per frame and
-   only ever removed when the frame stops being the active one, by which point it
-   is filled and finished with.
+   on every speech boundary in the game. .is-knock is added once and only ever
+   removed when that frame stops being the active one, by which point it is
+   filled and finished with.
 
-   A WeakSet OF THE ELEMENTS, NOT A SET OF INDICES, so there is no lifecycle to
-   get wrong: every screen builds a fresh bay from the template, and a fresh
-   frame is an object this has never seen, so it knocks once on arrival with
-   nothing to reset. The old ones go with the bay. */
-const knocked = new WeakSet();
+   WHAT STILL SAYS "THIS ONE IS YOURS" on every frame after the first, now that
+   they do not beat: the steady blue ring that .is-active paints, which is a
+   box-shadow and not an animation, and the paled flattened recess .is-later
+   puts on the frames either side of it. The child is told which frame is theirs
+   the whole way through the game. They are simply not told it twice, in motion,
+   on every frame. */
+let hasKnocked = false;
 
 /* HOW LONG A FRAME WAITS BEFORE IT KNOCKS. Long enough to cover a caller that
    renders and THEN speaks in the same tick, short enough that a child never
@@ -8076,7 +8088,7 @@ function paintSlots() {
     if (!live || !mine) el.classList.remove('is-active');
     /* Only when it is no longer the frame in turn - which means it has been
        filled. Taking it off any earlier would cancel the beats mid-knock, and
-       putting it back could never replay them (see the knocked WeakSet), so the frame
+       putting it back could never replay them (see hasKnocked), so the frame
        would simply lose them. */
     if (!mine) el.classList.remove('is-knock');
     el.classList.toggle('is-later', filled[i] === null && !mine);
@@ -8104,8 +8116,8 @@ function paintSlots() {
     const el = a !== -1 && slotEls[a];
     if (!el) return;
     el.classList.add('is-active');          // the frame is marked for its whole turn
-    if (!knocked.has(el)) {                 // ...but it only knocks the first time
-      knocked.add(el);
+    if (!hasKnocked) {                      // ...but the board knocks only once, ever
+      hasKnocked = true;
       el.classList.add('is-knock');
     }
   }, PULSE_ARM_MS);

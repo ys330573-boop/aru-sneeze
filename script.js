@@ -2801,8 +2801,9 @@
            did not get. Hold, and hand them a whole one when they are back. */
         if (document.hidden) { due = t + beat; autoTimer = setTimeout(turn, AUTO_TICK); return; }
 
-        /* mid-turn: wait, do not give up, or the book would simply stop */
-        if (Book.busy) { autoTimer = setTimeout(turn, AUTO_TICK); return; }
+        /* mid-turn, or they are picking something out of the menu: wait, do
+           not give up, or the book would simply stop */
+        if (Book.busy || JumpMenu.open) { autoTimer = setTimeout(turn, AUTO_TICK); return; }
 
         /* held past the moment for one of the reasons above, and now free: go
            the instant the deadline is met rather than at the next tick */
@@ -3143,7 +3144,20 @@
          files are prefetched, which only a server will honour. The ?v= on two
          of them has to match what the game's index.html asks for or the cache
          is simply missed — harmless, but no faster. */
-      const GAME = "game/game.html?start=1";
+      /* ?start=1 means "the child has already pressed a play button today, so
+         do not show them another one" — the board hides its title and starts
+         dealing the moment it loads. That is right for a full navigation, which
+         is the fallback below, and WRONG for the frame: the frame is loaded
+         while the paper is still covering the screen, so start=1 would run the
+         opening — her voice, the pop, the deal — behind the sheets where none
+         of it is seen or heard properly.
+
+         So the frame gets the board WITHOUT the flag: it loads, builds, and
+         waits. Nothing of it runs until openGame calls startGame() itself,
+         after the paper has gone. */
+      const GAME       = "game/game.html?start=1";   /* the fallback navigation */
+      const GAME_FRAME = "game/game.html";           /* loaded, but not started */
+      const GAME_BEAT  = 500;                        /* ms of stillness first   */
       const WARM_FETCH = [
         "game/game.html",
         "game/styles.css?v=232",
@@ -3263,18 +3277,77 @@
           frame.addEventListener("load", done, { once: true });
         });
 
-        window.playPaperTransition({
-          prepare: () => { frame.src = GAME; },
+        /* Hide the board's own title screen, and say whether we can. The board
+           is loaded without ?start=1 so that nothing of it runs early, which
+           leaves its title art up — and that must not be what the paper
+           uncovers. It is taken away with `hidden` rather than by the fade
+           startGame uses, because this happens behind the sheets where a fade
+           would be a fade of nothing.
 
+           It answers false if the board cannot be reached or cannot be started
+           from here, and openGame uses that to leave the title alone: better a
+           child who arrives at a play button they can press than one who
+           arrives at a board that never starts. */
+        const readyTheBoard = () => {
+          try {
+            const w = frame.contentWindow, d = frame.contentDocument;
+            if (!w || !d || typeof w.startGame !== "function") return false;
+            const title = d.getElementById("title");
+            if (title) title.hidden = true;
+            return true;
+          } catch { return false; }        /* not ours to touch */
+        };
+
+        window.playPaperTransition({
+          prepare: () => { frame.src = GAME_FRAME; },
+
+          /* The screen is paper. The board goes in UNDERNEATH it — the frame
+             sits at z 15, the sheets at 20 — which is the same thing
+             showFilmBehindPaper does for the film a few lines up, and it is
+             what makes this the same transition rather than a transition with
+             a swap after it. The sheets drifting away are what uncover the
+             game.
+
+             .is-gaming goes on here, while nothing can be seen, because it
+             takes away the book's own controls: they sit at z 28-30 and would
+             otherwise be drawn on top of a frame this far down.
+
+             The board is loaded, built and SILENT at this point — no ?start=1,
+             so nothing of it has run — and readyTheBoard takes its title art
+             away while nobody is looking. Returning the promise holds the
+             cover until all of that is true, so what the exit uncovers is
+             never a frame still fetching. */
           covered: () => {
             frame.hidden = false;
             document.documentElement.classList.add("is-gaming");
-            return ready;                  /* hold the cover until it is up */
+            return ready.then(readyTheBoard);
           },
 
+          /* The last sheet has gone, and the board has been on screen for the
+             length of the exit — uncovered by the sheets rather than shown
+             after them. Nothing appears here, which is the point: there is no
+             second event at the end of the transition.
+
+             What DOES happen here is the game beginning. Half a second of
+             stillness first, and the beat is not decoration: the child has just
+             watched paper fly across the whole screen, and starting her voice
+             under the last of that movement is two things at once. It also
+             makes the start read as the game's own rather than as the tail of
+             the transition.
+
+             startGame() is the board's own opening, called exactly as its play
+             button calls it — the audio context opens, the pop sounds, and the
+             deal comes in. Nothing here reaches past that one call: what the
+             game does next is entirely hers. */
           done: () => {
             /* the keyboard belongs to the board now, not to a book behind it */
             try { frame.contentWindow.focus(); } catch { /* not ours to focus */ }
+            setTimeout(() => {
+              try {
+                const w = frame.contentWindow;
+                if (w && typeof w.startGame === "function") w.startGame();
+              } catch { /* the board will wait on its own play button */ }
+            }, GAME_BEAT);
           }
         });
       }
@@ -3380,6 +3453,182 @@
                get here() { return there !== false; } };
     })();
 
+    /* ── the menu ──────────────────────────────────────────────────────────
+       Two buttons, and they are the two things the arrows cannot do: go on now
+       without waiting to be read to, and leave for the game.
+
+       IT HELD A GRID OF EVERY PAGE and does not any more. Thumbnails of all
+       thirteen pictures are a grown-up's idea of navigation — a table of
+       contents — and the arrows already move one page at a time, which is the
+       pace a story is read at. Dropping it also takes with it the one thing in
+       here that was expensive: the tiles were the full illustrations, there
+       being no smaller copy of each, so opening the panel used to pull the
+       whole book down the wire.
+
+       Both buttons deliberately ignore the gate that holds the forward arrow
+       back until a page has been read out: leaving the page you are on is the
+       whole purpose of this panel. Skipping counts as being done with the page,
+       so the arrow is there if the reader comes back to it. */
+    const JumpMenu = (() => {
+      const btn   = $("#jumpBtn");
+      const panel = $("#jumpPanel");
+      const veil  = $("#jumpVeil");
+      const grid  = $("#jumpGrid");
+      const skip  = $("#jumpSkip");
+      const game  = $("#jumpGame");
+      let on = false, built = false;
+      let closed = null;   /* what to tell when the panel shuts */
+
+      /* Built once, on the first opening, and never again — the page list does
+         not change while the book is open. Doing it here rather than at load is
+         what keeps thirteen full illustrations off the story's opening: they
+         are `loading="lazy"` as well, so even this only fetches the ones that
+         land on screen. */
+      function build() {
+        if (built) return;
+        built = true;
+        /* The title page is not offered. It is the home screen, and a tile
+           leading back to it would be the one way left of putting the cover
+           back on screen mid-story — with no Play button on it, because that
+           only shows outside play mode. The pages keep their real indices, so
+           `i` is still what Book.jump wants. */
+        grid.replaceChildren(...PAGES.map((page, i) => {
+          if (i < FIRST) return null;
+
+          const li = document.createElement("li");
+          li.className = "jump__item";
+
+          const pick = document.createElement("button");
+          pick.type = "button";
+          pick.className = "jump__pick";
+          /* the page's own words name it, for a screen reader and for a
+             grown-up hunting a particular moment */
+          const words = page.text ? page.text.hi.replace(/<[^>]*>/g, "") : page.alt.hi;
+          pick.setAttribute("aria-label", `पन्ना ${i + 1}: ${words}`);
+          pick.addEventListener("click", () => { close(); Book.jump(i); });
+
+          const im = document.createElement("img");
+          im.src = page.img;
+          im.alt = "";
+          im.loading = "lazy";
+          im.decoding = "async";
+          im.draggable = false;
+          pick.appendChild(im);
+
+          const no = document.createElement("span");
+          no.className = "jump__no";
+          no.textContent = String(i + 1);
+
+          li.append(pick, no);
+          return li;
+        }).filter(Boolean));
+      }
+
+      function sync() {
+        [...grid.querySelectorAll(".jump__pick")].forEach((p, i) => {
+          /* the tiles start at FIRST, so tile 0 is page index FIRST */
+          if (i + FIRST === Book.index) p.setAttribute("aria-current", "page");
+          else p.removeAttribute("aria-current");
+        });
+        skip.disabled = Book.index >= Book.total - 1;
+      }
+
+      function open() {
+        if (on) return;
+        on = true;
+        build();
+        sync();
+        panel.hidden = false;
+        veil.hidden = false;
+        /* the class lands a frame later, so the fade has a state to start from */
+        requestAnimationFrame(() => {
+          panel.classList.add("is-open");
+          veil.classList.add("is-open");
+        });
+        btn.setAttribute("aria-expanded", "true");
+        PageAudio.stop();            /* the narration waits rather than talking over this */
+        Finale.warm();               /* a head start on the game, in case they choose it */
+        /* and if the game is not in the project, do not offer it: the probe in
+           Finale answers once the warm-up has been asked for, which is now. */
+        setTimeout(() => { game.hidden = !Finale.here; }, 400);
+        /* a keyboard lands on the page it is already on, or the first tile */
+        const here = grid.querySelector('[aria-current="page"]') ||
+                     grid.querySelector(".jump__pick");
+        (here || (skip.disabled ? game : skip)).focus({ preventScroll: true });
+      }
+
+      function close() {
+        if (!on) return;
+        on = false;
+        if (closed) closed();   /* the narration was stopped on open */
+        panel.classList.remove("is-open");
+        veil.classList.remove("is-open");
+        btn.setAttribute("aria-expanded", "false");
+        /* out of the layout only once the fade is done */
+        setTimeout(() => {
+          if (on) return;            /* reopened in the meantime */
+          panel.hidden = true;
+          veil.hidden = true;
+        }, calm() ? 0 : 300);
+        btn.focus({ preventScroll: true });
+      }
+
+      return {
+        get open() { return on; },
+        toggle() { on ? close() : open(); },
+
+        /* Told when the panel goes away. Opening it stops the narration, and
+           the book turns on that narration finishing — so somebody has to
+           decide what happens to a page the reader interrupted. UI knows
+           whether it had already finished; this module only knows it closed. */
+        onClose(fn) { closed = fn; },
+        close,
+
+        start() {
+          btn.addEventListener("click", () => JumpMenu.toggle());
+          veil.addEventListener("click", close);
+
+          skip.addEventListener("click", () => {
+            const from = Book.index;
+            close();
+            heard.add(from);         /* they are done with this page by choice */
+            Book.next();
+          });
+
+          /* Out of the story and into the game, through the very same door the
+             ending uses — Finale.openGame, which runs the paper transition and
+             brings the board up in the frame in this page. The panel is closed
+             first because it draws above that transition and has to be on its
+             way out before the sheets arrive. Closing also restarts this page's
+             narration, which openGame then stops: the right order, not a
+             coincidence. */
+          game.addEventListener("click", () => {
+            game.disabled = true;    /* one tap; openGame guards the rest */
+            close();
+            Finale.openGame();
+          });
+
+          /* Escape belongs to the panel while it is open, and the arrow keys
+             must not turn pages behind it. Capture, so this runs before the
+             book's own key handling, and stopImmediatePropagation rather than
+             stopPropagation, because plain stopPropagation does not stop
+             another listener on the same node. */
+          window.addEventListener("keydown", (e) => {
+            if (!on) return;
+            if (e.key === "Escape") {
+              e.stopImmediatePropagation();
+              e.preventDefault();
+              close();
+            } else if (e.key.startsWith("Arrow") || e.key === " " ||
+                       e.key === "PageUp" || e.key === "PageDown" ||
+                       e.key === "Home" || e.key === "End") {
+              e.stopImmediatePropagation();   /* Tab still walks the tiles */
+            }
+          }, true);
+        }
+      };
+    })();
+
     const HandHint = (() => {
       const el = $("#handHint");
       /* Nine seconds of stillness before the hand appears. It was 4.2s, which
@@ -3394,6 +3643,7 @@
       /* what the reader is waiting to be told to press, if anything */
       function where() {
         if (Book.busy) return null;                       /* mid-turn */
+        if (JumpMenu.open) return null;                   /* the menu is open */
         const cover = document.documentElement.classList.contains("at-cover");
         if (cover && !PlayMode.on) return "start";        /* press Play */
         /* Nothing to point at once the story is running: the pages turn
@@ -3690,8 +3940,19 @@
           else if (i === Book.index) autoTurn(i);
         });
 
-        sync(Book.index, Book.total);
+        /* The menu stops the narration when it opens. If the reader shuts it
+           again without choosing either button, the page they were on has
+           nothing left to finish it - and the book turns on that finish, so it
+           would quietly stop instead. A page already heard just needs its beat
+           again; one interrupted mid-sentence says its piece from the top. */
+        JumpMenu.onClose(() => {
+          if (!PlayMode.on) return;
+          if (heard.has(Book.index)) autoTurn(Book.index);
+          else PageAudio.play();
+        });
 
+        sync(Book.index, Book.total);
+        JumpMenu.start();
 
         /* A way to watch the transition on demand: open the page with ?demo
            and a button appears. It runs the transition over whatever is on

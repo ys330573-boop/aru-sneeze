@@ -271,7 +271,13 @@ button { font: inherit; color: inherit; }
      parent, because two things need them: the button itself and the idle hand
      that points at it. cqw is 1% of the picture's width, so the button keeps
      its proportion to the artwork at every screen size. */
-  --start: clamp(84px, 12cqw, 168px);
+  /* The floor is a tap target, not a look: 12cqw would draw a 37px button on a
+     320px phone, under the 44px a small finger needs. It was 84px, which is
+     what froze the button for every picture narrower than 700px — on a phone
+     it swelled to 27% of the artwork against 10.5% on a desktop. At 48px the
+     proportion now holds all the way down to a 400px picture, and below that
+     the button stops shrinking rather than becoming untappable. */
+  --start: clamp(48px, 12cqw, 168px);
   /* THE BUTTON SITS UNDER THE TITLE, which is what this number is for. It is
      the gap from the picture's right edge, so bigger moves the button left.
 
@@ -287,7 +293,9 @@ button { font: inherit; color: inherit; }
   --start-bottom: 10.5%;  /* still clear enough for the hand to tap from below */
 
   /* how far the hand is, and how big */
-  --hand: clamp(46px, 6.6cqw, 96px);
+  /* the hand is decorative, so its floors are simply --start’s scaled by the
+     same ratio the cqw terms have — it has to keep pointing at the button */
+  --hand: clamp(26px, 6.6cqw, 96px);
   border-radius: var(--r-mat);
   background: linear-gradient(168deg, #fffefa, #f6ecd8);
   box-shadow: var(--sh-book);
@@ -825,7 +833,7 @@ button { font: inherit; color: inherit; }
    under it: a hand over the middle of the button hides the one thing the
    button has to say. */
 .handhint[data-at="start"] {
-  --hand: clamp(40px, 5.6cqw, 84px);
+  --hand: clamp(22px, 5.6cqw, 84px);
   right: calc(var(--start-right) + (var(--start) - var(--hand)) * .5 - var(--hand) * .12);
   bottom: calc(var(--start-bottom) - var(--hand) * .95);
 }
@@ -1377,24 +1385,26 @@ button { font: inherit; color: inherit; }
 /* tablet — the artwork gives up a little size, the buttons stay outside it */
 @media (max-width: 1100px) {
   :root {
-    --turn-ms: 720ms; --vfit: 150px;
+    --turn-ms: 720ms;
     --nav: clamp(58px, 7vw, 72px); --nav-gap: clamp(12px, 1.8vw, 22px);
   }
   /* play mode keeps its tighter gutters here too */
-  .is-play { --vfit: 96px; --nav: clamp(52px, 4.4vw, 66px); --nav-gap: clamp(8px, 1vw, 16px); }
+  .is-play { --nav: clamp(52px, 4.4vw, 66px); --nav-gap: clamp(8px, 1vw, 16px); }
   .book { width: min(100%, 880px, calc((100svh - var(--vfit)) * 16 / 9)); }
 }
 
-/* phones — too narrow for a column of text beside the art, so the words move
-   under the picture, and the buttons onto its lower corners for thumb reach */
+/* phones — the buttons move onto the picture's lower corners for thumb reach.
+   No bar above the art and no words below it, so --vfit is the page padding
+   and nothing else — see the note at :root. */
 @media (max-width: 760px) {
-  :root { --nav: 60px; --r-mat: 26px; --r-frame: 20px; --vfit: 234px; }
+  /* .app padding here is 12px top, 16px bottom; +12px headroom, as at :root */
+  :root { --nav: 60px; --r-mat: 26px; --r-frame: 20px; --vfit: calc(12px + 16px + 12px); }
 
   .scene__text { display: none; }
   .caption { display: block; }
 
   .app { padding: 12px 12px 16px; gap: 10px; }
-  .stage { padding-inline: 0; align-items: flex-start; padding-top: clamp(6px, 4vh, 40px); }
+  .stage { padding-inline: 0; }
   .frame__vignette { --scrim: rgba(34, 21, 10, .34); }
 
   .brand__badge { width: 36px; height: 36px; border-radius: 12px; }
@@ -1406,9 +1416,8 @@ button { font: inherit; color: inherit; }
   .playbtn { padding: 6px; gap: 0; }
 
   /* the top bar is gone in play mode, so the picture claims that height */
-  .is-play { --vfit: 176px; --nav: 56px; }
+  .is-play { --vfit: calc(2 * 10px + 12px); --nav: 56px; }
   .is-play .app { padding: 10px; }
-  .is-play .stage { align-items: center; padding-top: 0; }
 
   :root { --nav-inset: clamp(10px, 3vw, 18px); }   /* arrows come inside the picture */
   .navbtn {
@@ -1440,8 +1449,7 @@ button { font: inherit; color: inherit; }
    anything positioned against it (the arrows, the Play button) landed outside
    the picture. It is width-driven like every other breakpoint now. */
 @media (max-height: 560px) and (orientation: landscape) and (min-width: 780px) {
-  :root { --nav: 50px; --nav-gap: 10px; --vfit: 92px; }
-  .is-play { --vfit: 44px; }
+  :root { --nav: 50px; --nav-gap: 10px; --vfit: calc(8px + 10px + 12px); }
 
   .app { gap: 6px; padding: 8px 12px 10px; }
   .topbar { gap: 6px; }
@@ -1451,7 +1459,7 @@ button { font: inherit; color: inherit; }
 /* short AND narrow landscape — the words sit under the picture here, so keep
    them compact and let them scroll in place rather than push the art away */
 @media (max-height: 560px) and (orientation: landscape) and (max-width: 779px) {
-  :root { --nav: 46px; --vfit: 174px; }
+  :root { --nav: 46px; --vfit: calc(8px + 10px + 12px); }
   .app { gap: 6px; padding: 8px 12px 10px; }
   .topbar { gap: 6px; }
   .stage { align-items: center; padding-top: 0; }
@@ -1539,8 +1547,24 @@ button { font: inherit; color: inherit; }
    — which takes its animations off the compositor and its buttons out of the
    tab order. Nothing behind is still running while a child plays.
    ------------------------------------------------------------------------- */
+/* UNDER THE PAPER, WHICH IS THE WHOLE POINT OF THE NUMBER. The sheets are at
+   z 20 and this is at 15, so the board sits below them exactly as the film
+   does — it is put in place while the screen is covered, and the sheets
+   drifting away are what uncover it. That is what makes the changeover into
+   the game the same transition as the changeover into the film, rather than a
+   transition followed by a swap.
+
+   It was z 100 once, above the paper, and that was wrong twice over: the board
+   drew over the sheets so the whole exit happened behind it unseen, and the fix
+   for that — veiling the board until the last sheet had gone — meant the exit
+   uncovered the film's final frame and the game arrived after it as a separate
+   event. Below the paper, neither problem exists.
+
+   The book's own controls sit at z 28-30 and would draw on top of a frame down
+   here. They are taken away by .is-gaming at the same moment the board goes in,
+   which is why that class is added while the screen is still covered. */
 .gameframe {
-  position: fixed; inset: 0; z-index: 100;
+  position: fixed; inset: 0; z-index: 15;
   width: 100%; height: 100%;
   border: 0;
   background: #f3dcc0;
@@ -1560,7 +1584,214 @@ button { font: inherit; color: inherit; }
    this is the guard that makes `hidden` mean hidden. */
 .gameframe[hidden] { display: none; }
 
+
 /* the book steps aside completely once the board is up */
+/* THE PAPER IS NOT IN THIS LIST, and must not be. .is-gaming is added while
+   the sheets are still covering the screen — that is when the board goes in
+   underneath them — so hiding .paper here would make the whole flight vanish
+   mid-transition. Paper clears its own sheets when it finishes; there is
+   nothing left to hide. */
 .is-gaming .app,
-.is-gaming .grain,
-.is-gaming .paper { display: none; }
+.is-gaming .grain { display: none; }
+
+/* ── 12. The menu ────────────────────────────────────────────────────────────
+   Two ways out of the page you are on. It carried a grid of every page as a
+   thumbnail once and no longer does: picking a page out of a list is a
+   grown-up's idea of navigation, and the arrows already move one page at a
+   time, which is the pace a story is read at. What is left is the two things
+   the arrows cannot do — go on now without waiting to be read to, and leave
+   for the game.
+
+   Everything below is as it was before the grid went, minus the rules that
+   drew it.
+   ------------------------------------------------------------------------- */
+/* ── 7b. Jump menu ───────────────────────────────────────────────────────────
+   A way past the current page and a way back to any other. Two things live in
+   it: skip, which goes on now without waiting for the page to be read out,
+   and a grid of the pages themselves.
+
+   The grid is pictures rather than page numbers because the reader this book
+   is for cannot necessarily read one — but can recognise a red bicycle. It is
+   built from the same page list the book reads, so it can never offer a page
+   that does not exist.
+   ------------------------------------------------------------------------- */
+.jumpbtn {
+  position: fixed; z-index: 30;
+  top: clamp(10px, 1.6vh, 20px); left: clamp(10px, 1.6vw, 22px);
+  display: grid; place-items: center;
+  width: 44px; height: 44px;
+  border: 0; border-radius: 50%;
+  /* the same warm dark as the exit button: these two belong to the app
+     rather than to the story */
+  background: rgba(26, 18, 12, .74);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  color: #fff; cursor: pointer;
+  box-shadow: 0 8px 20px -8px rgba(0, 0, 0, .6);
+  transition: transform .22s ease, background-color .22s ease;
+}
+.jumpbtn:hover  { background: rgba(26, 18, 12, .88); }
+.jumpbtn:active { transform: scale(.94); }
+
+.jumpbtn__bars { display: grid; gap: 4px; width: 20px; }
+.jumpbtn__bars i {
+  display: block; height: 2.4px; border-radius: 2px;
+  background: currentColor;
+  transition: transform .26s var(--turn-ease), opacity .2s ease;
+}
+/* open, the bars become a cross, so one button says both things */
+.jumpbtn[aria-expanded="true"] .jumpbtn__bars i:nth-child(1) { transform: translateY(6.4px) rotate(45deg); }
+.jumpbtn[aria-expanded="true"] .jumpbtn__bars i:nth-child(2) { opacity: 0; }
+.jumpbtn[aria-expanded="true"] .jumpbtn__bars i:nth-child(3) { transform: translateY(-6.4px) rotate(-45deg); }
+
+/* the veil dims the story, so the panel reads as a step out of it, and is
+   what a tap outside the panel lands on */
+.jumpveil {
+  position: fixed; inset: 0; z-index: 28;
+  background: rgba(28, 18, 10, .5);
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  opacity: 0; transition: opacity .28s ease;
+}
+.jumpveil.is-open { opacity: 1; }
+
+.jump {
+  position: fixed; z-index: 29;
+  inset: clamp(8px, 2vh, 26px);
+  margin: auto;
+  width: min(96vw, 920px); max-height: min(86svh, 760px);
+  overflow-y: auto; overscroll-behavior: contain;
+  /* one source for the inset, so the sticky foot below can bleed out to
+     the panel edges by exactly as much as this pushes in */
+  --jump-pad: clamp(14px, 2.2vw, 26px);
+  padding: var(--jump-pad);
+  border-radius: clamp(18px, 2vw, 28px);
+  background: linear-gradient(168deg, #fffdf6, #f6ecd8);
+  box-shadow: 0 30px 70px -24px rgba(40, 26, 14, .6);
+  opacity: 0; transform: translateY(10px) scale(.985);
+  transition: opacity .28s ease, transform .3s var(--turn-ease);
+}
+.jump.is-open { opacity: 1; transform: none; }
+
+.jump__title {
+  margin: 0 0 clamp(10px, 1.4vw, 14px);
+  font-size: clamp(1.1rem, 2.4vw, 1.5rem); font-weight: 800;
+  color: var(--ink);
+}
+
+/* skip: the way on without waiting */
+.jump__skip {
+  display: inline-flex; align-items: center; gap: 10px;
+  margin: 0 0 clamp(12px, 1.6vw, 18px);
+  padding: .55em 1.1em;
+  border: 0; border-radius: 999px;
+  background: var(--terracotta); color: #fff;
+  font-size: clamp(.95rem, 1.9vw, 1.15rem); font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 20px -10px rgba(164, 62, 40, .9);
+  transition: transform .2s var(--turn-ease), background-color .2s ease, opacity .2s ease;
+}
+.jump__skip:hover  { background: #a8402a; }
+.jump__skip:active { transform: scale(.96); }
+.jump__skip:disabled { opacity: .4; cursor: default; box-shadow: none; }
+
+/* two chevrons, the usual sign for "go on" */
+.jump__skip-ico { display: flex; gap: 2px; }
+.jump__skip-ico i {
+  width: 7px; height: 7px;
+  border-top: 2.4px solid currentColor; border-right: 2.4px solid currentColor;
+  transform: rotate(45deg);
+}
+
+
+/* The way into the game. Deliberately not the terracotta of "आगे बढ़ो": that
+   one moves you along inside the story and this one leaves it, so it reads as a
+   different kind of thing. Teal, and set apart from the pictures by a rule. */
+/* THE FOOT OF THE PANEL, and the reason it is sticky rather than simply last.
+   With thirteen pictures in the grid the panel scrolls on a short window —
+   measured at 1262x624: 755px of content in a 537px box — and a button sitting
+   after the grid was 185px below the fold. A way out of the story that has to
+   be scrolled for is not a way out a child will find, so it stays on screen
+   whatever the grid is doing.
+
+   The negative margins undo the panel's own padding so the band reaches the
+   panel's edges, and `bottom` cancels the padding again so it sits flush on
+   them. The gradient is there because the tiles scroll underneath it. */
+.jump__foot {
+  position: sticky;
+  bottom: calc(-1 * var(--jump-pad));
+  margin: clamp(14px, 1.8vw, 20px) calc(-1 * var(--jump-pad)) calc(-1 * var(--jump-pad));
+  padding: clamp(9px, 1.2vw, 13px) var(--jump-pad) var(--jump-pad);
+  background: linear-gradient(to top, #f6ecd8 58%, rgba(246, 236, 216, 0));
+  border-top: 1px solid var(--ink-faint);
+}
+
+.jump__game {
+  display: inline-flex; align-items: center; gap: 10px;
+  margin: 0;
+  padding: .55em 1.15em;
+  border: 0; border-radius: 999px;
+  background: var(--teal); color: #fff;
+  font-size: clamp(.95rem, 1.9vw, 1.15rem); font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 20px -10px rgba(45, 104, 101, .9);
+  transition: transform .2s var(--turn-ease), background-color .2s ease, opacity .2s ease;
+}
+.jump__game:hover  { background: #32726e; }
+.jump__game:active { transform: scale(.96); }
+.jump__game:disabled { opacity: .4; cursor: default; box-shadow: none; }
+
+/* a single chevron: one step, out of here */
+.jump__game-ico {
+  width: 8px; height: 8px; flex: none;
+  border-top: 2.4px solid currentColor; border-right: 2.4px solid currentColor;
+  transform: rotate(45deg);
+}
+
+
+
+/* the burger lives outside .app, so it needs saying separately — it sits at
+   z 30 and would otherwise be drawn on top of the board */
+.is-gaming .jumpbtn,
+.is-gaming .jump,
+.is-gaming .jumpveil { display: none; }
+
+/* the grid of pages, restored. Tiles are the full illustrations — there is no
+   smaller copy of each — so they are lazy and fetched only when the panel is
+   first opened, never on page load. They are webp now, which is what makes
+   thirteen of them affordable at all: the set is a third of what it weighed
+   when this grid was first written. */
+.jump__grid {
+  display: grid; gap: clamp(8px, 1.4vw, 16px);
+  grid-template-columns: repeat(auto-fill, minmax(clamp(120px, 15vw, 190px), 1fr));
+  margin: 0; padding: 0; list-style: none;
+}
+
+.jump__item { position: relative; }
+
+.jump__pick {
+  display: block; width: 100%; padding: 0;
+  border: 3px solid transparent; border-radius: 14px;
+  background: #e8dcc2; cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 8px 18px -12px rgba(40, 26, 14, .7);
+  transition: transform .2s var(--turn-ease), border-color .2s ease, box-shadow .2s ease;
+}
+.jump__pick img {
+  width: 100%; aspect-ratio: 1600 / 900;
+  object-fit: cover; display: block;
+}
+.jump__pick:hover, .jump__pick:focus-visible {
+  transform: translateY(-3px) scale(1.02);
+  border-color: rgba(58, 123, 213, .85);
+  box-shadow: 0 14px 24px -14px rgba(40, 26, 14, .8);
+}
+.jump__pick[aria-current="page"] { border-color: var(--terracotta); }
+
+/* the page's number, so a grown-up can find one by number too */
+.jump__no {
+  position: absolute; top: 8px; left: 8px;
+  min-width: 26px; padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(26, 18, 12, .8); color: #fff;
+  font-size: .82rem; font-weight: 700; text-align: center;
+  pointer-events: none;
+}

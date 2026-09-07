@@ -1016,9 +1016,9 @@ html, body {
    "this one is yours" for as long as the turn lasts, and cannot flicker because
    nothing about it is animated.
 
-   .is-knock carries the beats and is added ONCE per frame - see the knocked
-   WeakSet in app.js. It holds the quiet ring when it finishes (`both`, and the
-   0%/100% keyframe IS that ring) so the handover from knock to mark is
+   .is-knock carries the beats and is added ONCE IN THE WHOLE GAME - see the
+   hasKnocked flag in app.js. It holds the quiet ring when it finishes (`both`,
+   and the 0%/100% keyframe IS that ring) so the handover from knock to mark is
    seamless: same 4px, same alpha, no repaint. */
 .slot.is-active .slot-mat {
   box-shadow: 0 0 0 4px rgba(72, 184, 255, 0.30),
@@ -1030,9 +1030,9 @@ html, body {
    the beat is the same speed it always was and still holds the quiet ring at
    the end.
 
-   It still cannot happen twice on the same frame, for the reason below: the
-   knock hangs on .is-knock, which the knocked WeakSet in app.js adds once per
-   frame element and never again. A wrong answer repaints the board and puts
+   It cannot happen twice anywhere now: the knock hangs on .is-knock, which
+   the hasKnocked flag in app.js sets once, on the first frame of the first
+   screen, and never again. A wrong answer repaints the board and puts
    .is-active back — that is the still ring, which is not animated — but it
    cannot bring the beat back with it. */
 .slot.is-knock .slot-mat {
@@ -1109,7 +1109,7 @@ html, body {
    waiting their turn. On a board made for five-year-olds that is the wrong kind
    of quiet: it looks broken, not patient.
 
-   So the frame stays a frame. The mat holds at 0.9, opaque enough that its
+   So the frame stays a frame. The mat holds at 0.675, opaque enough that its
    edge is still a clean line against the planks, and the "not yet" is carried
    by the recess instead: paled with brightness() and only half desaturated, so
    it keeps its peach and simply sits back, and - the part that does most of the
@@ -1126,10 +1126,10 @@ html, body {
    transition: .slot.is-over paints its ring through the same property and a drop
    target has to answer instantly. */
 .slot.is-later .slot-mat {
-  opacity: 0.9;
+  opacity: 0.675;
 }
 .slot.is-later .slot-well {
-  opacity: 0.9;
+  opacity: 0.675;
   filter: saturate(0.6) brightness(1.07);
   box-shadow: none;
 }
