@@ -17100,6 +17100,33 @@ function recapCheer() {
      used to be for the placement to try if it is ever wanted back. What is left is
      the rest of that row - every picture lit, him jumping, the burst, and the
      paper coming up behind him. */
+
+  /* AND THEN THE BOOK TAKES IT BACK. The game is over on this frame - every
+     picture placed, all ten of them lit, the confetti in the air - and what the
+     child came in from is the cover of the story. This is the only thing the
+     game ever says to the page around it: that page listens for it and brings
+     the same paper transition back across, the one that carried them here.
+
+     THE HOLD IS THE CELEBRATION'S OWN LENGTH, read off the cannons rather than
+     picked. The last of the three fires at CLAP_HANDOVER_MS + 1640ms and the
+     paper it throws is still falling for seconds after that, so leaving any
+     earlier would cut off the thing the child has just earned. CONF_LIFE is 9s,
+     but most of a burst is off the bottom of the stage long before that, so
+     what this waits for is the fall and not the last piece.
+
+     IT GOES THROUGH formTimers so that a dev skip taken mid-celebration cancels
+     it along with everything else - otherwise the book would take the screen
+     back from a board that had already moved on to another screen.
+
+     STANDALONE IT POSTS TO ITSELF: window.parent is window when the game is
+     opened at its own address, and nothing there is listening. Nothing happens,
+     which is right - opened on its own there is no cover to go back to. */
+  const goHome = CLAP_HANDOVER_MS + CONF_BURSTS[CONF_BURSTS.length - 1].at + 4700;
+  formTimers.push(setTimeout(() => {
+    try { window.parent.postMessage({ type: 'aaru:game-over' }, '*'); }
+    catch (e) { /* a parent that will not be spoken to: stay where we are */ }
+  }, goHome));
+
   return true;
 }
 

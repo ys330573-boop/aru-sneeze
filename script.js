@@ -3352,6 +3352,68 @@
         });
       }
 
+      /* ── AND BACK TO THE COVER ────────────────────────────────────────────
+         The game announces its own ending, exactly as the film does: one
+         message, sent by the board's celebration once the confetti has fallen.
+         The book answers it by taking the screen back through THE SAME PAPER
+         TRANSITION that handed it over - so the way out is the way in, run
+         backwards, rather than a second idiom bolted onto the end.
+
+         WHAT HAPPENS WHILE THE SHEETS ARE OVER THE SCREEN is everything: play
+         mode ends, the book turns to the cover, the board is unloaded, and the
+         film is put away. None of it is seen, which is the point - what the
+         sheets drift off to reveal is a cover that looks exactly as it did
+         before any of this started, with its Play button waiting.
+
+         THE ORDER INSIDE covered() IS NOT INCIDENTAL. PlayMode.exit() comes
+         first because two things in the book hang off it: the page sound, which
+         fires on a change only in play mode, and autoTurn, which arms on a page
+         becoming ready and returns at once when play mode is off. Turning the
+         page first would ring a page sound nobody can see the cause of, and arm
+         a turn away from the cover the reader has just been brought back to.
+
+         THE FRAME IS UNLOADED, not merely hidden. about:blank tears the board
+         down and takes its audio with it - a hidden iframe goes on playing -
+         and it means a reader who goes back in gets a new game rather than the
+         finished one they left. reset() re-arms the film and the handover for
+         exactly the same reason.
+
+         AND THE TURN IS WAITED OUT. It is invisible under the sheets, but it
+         still has to be OVER before they leave, or they uncover a book in the
+         middle of a flip. Paper races this against its own cap, so a turn that
+         somehow never finishes cannot strand the transition. */
+      const GAME_OVER = "aaru:game-over";
+      let closing = false;
+
+      function closeGame() {
+        const frame = $("#gameFrame");
+        if (closing || !frame || frame.hidden) return;
+        closing = true;
+
+        window.playPaperTransition({
+          covered: () => {
+            PlayMode.exit();
+            Book.jump(0);
+            frame.hidden = true;
+            frame.src = "about:blank";
+            document.documentElement.classList.remove("is-gaming");
+            reset();
+            return new Promise((r) => setTimeout(r, cssMs("--turn-ms", 780) + 80));
+          },
+          done: () => { closing = false; }
+        });
+      }
+
+      /* Only the board in this page is listened to. The check costs nothing and
+         it keeps the book from being sent home by anything else that can reach
+         a window - an ad frame, an embed, a page that has framed this one. */
+      window.addEventListener("message", (e) => {
+        if (!e || !e.data || e.data.type !== GAME_OVER) return;
+        const frame = $("#gameFrame");
+        if (!frame || e.source !== frame.contentWindow) return;
+        closeGame();
+      });
+
       /* back to a closed book: film put away, ready to run again if the reader
          comes back to the last page */
       function reset() {
